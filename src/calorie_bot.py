@@ -7,6 +7,8 @@ import base64
 import re
 import io
 import sqlite3
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 
 import httpx
@@ -1209,6 +1211,24 @@ def main():
     
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, user_text_handler))
     application.add_handler(MessageHandler(filters.PHOTO | filters.VOICE, user_media_handler))
+    
+    # --- Dummy HTTP Server for Render.com ---
+    class DummyHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-type','text/plain')
+            self.end_headers()
+            self.wfile.write(b"Bot is running!")
+
+    def run_dummy_server():
+        port = int(os.environ.get("PORT", 10000))
+        server = HTTPServer(('0.0.0.0', port), DummyHandler)
+        server.serve_forever()
+
+    server_thread = threading.Thread(target=run_dummy_server)
+    server_thread.daemon = True
+    server_thread.start()
+    # ----------------------------------------
     
     # Start bot
     logger.info("Starting Calorie Diary Bot...")
