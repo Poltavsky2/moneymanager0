@@ -307,11 +307,12 @@ async def call_ai_api(prompt: str, api_key: str, system_instruction: str = None,
                         }
                     })
                 payload = {
-                    "contents": [{"parts": parts}],
-                    "generationConfig": {
+                    "contents": [{"parts": parts}]
+                }
+                if response_json:
+                    payload["generationConfig"] = {
                         "responseMimeType": "application/json"
                     }
-                }
                 async with httpx.AsyncClient() as client:
                     resp = await client.post(url, headers=headers, json=payload, timeout=60.0)
                     resp.raise_for_status()
