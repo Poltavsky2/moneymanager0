@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html class="light" lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <title>FinAI — Telegram Mini App</title>
+    
+    <!-- Tailwind CSS & Google Fonts -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3300a3",          // Electric Violet
+                        "primary-container": "#4a00e0",
+                        "secondary": "#841cd8",
+                        "secondary-container": "#9e42f2",
+                        "background": "#f7f9fc",       // Cool light grey
+                        "surface": "#f7f9fc",
+                        "surface-container": "#eceef1",
+                        "surface-container-low": "#f2f4f7",
+                        "surface-container-lowest": "#ffffff",
+                        "on-background": "#191c1e",
+                        "on-surface": "#191c1e",
+                        "on-surface-variant": "#484456",
+                        "outline": "#797488",
+                        "outline-variant": "#c9c3d9",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#e6deff",
+                        "on-primary-fixed-variant": "#4700d7"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "2xl": "20px",
+                        "3xl": "24px",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "container-margin": "16px",
+                        "gutter": "12px",
+                        "inset-card": "20px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "stack-lg": "24px"
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .bg-primary-gradient {
+            background: linear-gradient(135deg, #3300a3 0%, #841cd8 100%);
+        }
+        .border-neutral {
+            border: 1px solid rgba(201, 195, 217, 0.3);
+        }
+        .chart-bar-animate {
+            animation: growUp 0.8s ease-out forwards;
+            transform-origin: bottom;
+            transform: scaleY(0);
+        }
+        @keyframes growUp {
+            to { transform: scaleY(1); }
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        @keyframes bounce-slow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .animate-bounce-slow {
+            animation: bounce-slow 3s ease-in-out infinite;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 antialiased min-h-screen flex justify-center">
+
+    <!-- Phone Viewport constrained container -->
+    <div id="app-container" class="max-w-[480px] w-full min-h-screen bg-background text-on-background relative pt-[72px] pb-[96px] shadow-2xl flex flex-col border-x border-outline-variant/20">
+
+        <!-- Top Navigation Header -->
+        <header id="app-header" class="fixed top-0 left-1/2 -translate-x-1/2 max-w-[480px] w-full z-50 flex justify-between items-center px-container-margin py-stack-sm bg-surface/80 dark:bg-background/80 backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] h-[64px] border-b border-outline-variant/20 hidden">
+            <div class="flex items-center gap-3">
+                <div id="user-avatar-container" class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold shadow-sm relative">
+                    <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                </div>
+                <div>
+                    <span class="text-[10px] font-bold text-outline block leading-none mb-0.5 uppercase">Баланс средств</span>
+                    <h1 class="text-headline-sm font-semibold text-on-surface leading-none" id="header-title">Общий капитал</h1>
+                </div>
+            </div>
+            <button id="btn-settings-top" class="w-10 h-10 rounded-full flex items-center justify-center text-primary hover:bg-surface-variant/20 transition-colors">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+            </button>
+        </header>
+
+        <!-- VIEW 0: LOGIN SCREEN -->
+        <main id="view-login" class="px-container-margin flex flex-col gap-6 w-full py-8 select-none hidden">
+            <!-- Brand Logo & Header -->
+            <div class="flex flex-col items-center text-center mt-4">
+                <div class="relative w-16 h-16 rounded-2xl bg-primary-gradient flex items-center justify-center shadow-[0_8px_24px_rgba(74,0,224,0.25)] mb-4 animate-bounce-slow">
+                    <span class="material-symbols-outlined text-[36px] text-white" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                    <div class="absolute inset-0 rounded-2xl border border-white/20"></div>
+                </div>
+                <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">FinAI</h1>
+                <p class="text-[11px] font-bold text-outline tracking-wider uppercase mt-1">Умный финансовый помощник</p>
+            </div>
+
+            <!-- Welcome Greeting -->
+            <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-[24px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] text-center">
+                <h2 id="login-greeting-title" class="text-xl font-bold text-on-surface">Вход в аккаунт</h2>
+                <p id="login-greeting-subtitle" class="text-xs text-outline mt-1.5 leading-relaxed">Безопасный облачный доступ к вашим финансам по ключу</p>
+            </div>
+
+            <!-- Tab Switcher (Login / Register) -->
+            <div class="flex bg-surface-container p-1 rounded-2xl border border-outline-variant/20">
+                <button id="tab-login-signin" class="flex-1 py-2.5 rounded-xl text-xs font-bold text-primary bg-surface-container-lowest shadow-sm transition-all duration-200">
+                    Войти по ключу
+                </button>
+                <button id="tab-login-signup" class="flex-1 py-2.5 rounded-xl text-xs font-bold text-outline hover:text-on-surface transition-all duration-200">
+                    Создать аккаунт
+                </button>
+            </div>
+
+            <!-- Panel 1: Sign In by Key -->
+            <div id="login-panel-signin" class="flex flex-col gap-5 w-full animate-in fade-in duration-200">
+                <div class="flex flex-col">
+                    <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-2">Ваш ключ доступа (6 символов)</label>
+                    <input id="login-key-input" class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-[16px] py-3.5 px-4 text-center text-lg font-bold tracking-widest text-on-surface uppercase focus:border-primary focus:ring-0 outline-none shadow-inner" type="text" maxlength="6" placeholder="XXXXXX" autocomplete="off"/>
+                </div>
+                <button id="btn-login-submit" class="w-full rounded-[32px] bg-primary-gradient text-white font-bold py-3.5 px-4 shadow-[0_8px_24px_rgba(74,0,224,0.15)] active:scale-98 transition-transform flex items-center justify-center gap-2">
+                    <span>Войти</span>
+                </button>
+            </div>
+
+            <!-- Panel 2: Create Account -->
+            <div id="login-panel-signup" class="flex flex-col gap-5 w-full hidden animate-in fade-in duration-200">
+                <!-- Initial view before generation -->
+                <div id="signup-initial" class="flex flex-col gap-4 text-center items-center">
+                    <p class="text-xs text-outline leading-relaxed px-2">У вас ещё нет аккаунта? Сгенерируйте новый 6-значный ключ для безопасного хранения ваших данных.</p>
+                    <button id="btn-generate-key" class="w-full rounded-[32px] bg-primary-gradient text-white font-bold py-3.5 px-4 shadow-[0_8px_24px_rgba(74,0,224,0.15)] active:scale-98 transition-transform">
+                        Сгенерировать ключ
+                    </button>
+                </div>
+
+                <!-- Display view after key generation -->
+                <div id="signup-key-display" class="flex flex-col gap-5 hidden animate-in zoom-in-95 duration-200">
+                    <div class="bg-surface-container-low border border-dashed border-primary/40 rounded-[20px] p-5 flex flex-col items-center gap-3 text-center">
+                        <span class="text-[10px] font-bold text-primary uppercase tracking-widest">Ваш новый ключ доступа</span>
+                        <div id="new-key-value" class="text-3xl font-extrabold tracking-widest text-primary select-all py-1">XXXXXX</div>
+                        <button id="btn-copy-key" class="px-4 py-1.5 rounded-full text-xs font-bold bg-primary/10 text-primary hover:bg-primary/15 transition-colors flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[14px]">content_copy</span>
+                            <span>Скопировать</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-error-container/20 border border-error/20 rounded-xl p-3 flex gap-2.5 text-error text-xs leading-normal">
+                        <span class="material-symbols-outlined shrink-0 text-[18px]">warning</span>
+                        <p><strong>Важно:</strong> Сохраните этот ключ в надёжном месте. Без него вы потеряете доступ к аккаунту и данным.</p>
+                    </div>
+
+                    <button id="btn-signup-confirm" class="w-full rounded-[32px] bg-primary-gradient text-white font-bold py-3.5 px-4 shadow-[0_8px_24px_rgba(74,0,224,0.15)] active:scale-98 transition-transform flex items-center justify-center gap-1">
+                        <span>Сохранить и войти</span>
+                        <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- VIEW 1: HOME (ACCOUNTING DASHBOARD) -->
+        <main id="view-home" class="px-container-margin flex flex-col gap-stack-lg w-full hidden">
+            
+            <!-- Net Worth Card (Redesigned without Bank Card masking) -->
+            <section class="rounded-3xl p-inset-card bg-primary-gradient shadow-[0px_8px_24px_rgba(74,0,224,0.15)] relative overflow-hidden text-white">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+                <div class="relative z-10 flex flex-col">
+                    <h2 class="text-xs font-semibold text-white/70 uppercase tracking-wider mb-1" id="lbl-net-worth">Сумма всех средств</h2>
+                    <div class="text-3xl font-bold tracking-tight mb-6" id="net-worth-display">
+                        0.00 ₽
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-white/90" id="net-worth-date">Обновлено только что</span>
+                        <span class="text-xs font-bold text-white bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm" id="net-worth-trend">
+                            Капитал
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI Input Panel (Voice/Text/Multimodal Parsing UI) -->
+            <section class="rounded-2xl p-3 bg-surface-container-lowest border-neutral shadow-[0px_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-3 relative overflow-hidden">
+                <div class="absolute inset-0 bg-primary/5 pointer-events-none"></div>
+                <div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shrink-0 relative z-10 shadow-sm">
+                    <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                </div>
+                <input id="ai-text-input" class="w-full bg-transparent border-none focus:ring-0 text-sm font-medium text-on-surface placeholder:text-outline relative z-10 outline-none p-1" placeholder="Куда ушли деньги? Напишите..." type="text"/>
+                <input type="file" id="ai-file-input" accept="image/*" class="hidden"/>
+                <button id="btn-ai-camera" class="w-8 h-8 rounded-full flex items-center justify-center text-outline hover:bg-surface-variant/20 transition-colors relative z-10 active:scale-95 shrink-0" title="Загрузить чек">
+                    <span class="material-symbols-outlined text-[20px]">photo_camera</span>
+                </button>
+                <button id="btn-ai-mic" class="w-8 h-8 rounded-full flex items-center justify-center text-outline hover:bg-surface-variant/20 transition-colors relative z-10 active:scale-95 shrink-0" title="Диктовать голосом">
+                    <span class="material-symbols-outlined text-[20px]">mic</span>
+                </button>
+                <button id="btn-ai-submit" class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center hover:opacity-90 transition-opacity shrink-0 relative z-10 shadow-sm active:scale-95">
+                    <span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">send</span>
+                </button>
+            </section>
+
+            <!-- Quick Action Button (Modified to single Add Transaction button) -->
+            <section class="flex w-full">
+                <button id="btn-quick-add" class="w-full rounded-2xl bg-primary text-white shadow-[0px_8px_24px_rgba(74,0,224,0.15)] py-3.5 px-4 flex items-center justify-center gap-2 transition-transform active:scale-95 font-medium">
+                    <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+                    <span id="lbl-btn-quick-add">Добавить операцию</span>
+                </button>
+            </section>
+
+            <!-- Recent Transactions -->
+            <section class="bg-surface-container-lowest rounded-3xl p-inset-card shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border-neutral flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-base font-bold text-on-surface" id="lbl-recent-transactions">Последние транзакции</h3>
+                    <button class="text-sm font-semibold text-primary" id="btn-see-all-tx">Все</button>
+                </div>
+                <div class="flex flex-col gap-1" id="transactions-list-container">
+                    <!-- Loaded dynamically -->
+                </div>
+            </section>
+
+            <!-- Exchange Rates Panel -->
+            <section id="exchange-rates-panel" class="bg-surface-container-lowest rounded-3xl p-4 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border-neutral flex flex-col gap-2">
+                <div class="flex justify-between items-center w-full">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[20px]">currency_exchange</span>
+                        <span class="text-xs font-bold text-on-surface">Курсы валют</span>
+                    </div>
+                    <div class="flex gap-4 text-xs font-semibold text-outline">
+                        <div>USD/RUB: <span id="rate-usd-rub" class="text-on-surface font-bold">--</span></div>
+                        <div>EUR/USD: <span id="rate-eur-usd" class="text-on-surface font-bold">--</span></div>
+                    </div>
+                </div>
+                <div class="text-[10px] text-outline text-right w-full" id="rates-updated-time">--</div>
+            </section>
+        </main>
+
+        <!-- VIEW 2: STATISTICS (FINANCIAL STATISTICS SCREEN) -->
+        <main id="view-stats" class="px-container-margin flex flex-col gap-stack-lg w-full hidden">
+            <!-- Controls & Header -->
+            <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-center">
+                    
+                    <!-- Timeframe selector without paging navigation arrows -->
+                    <div class="flex items-center gap-1 bg-surface-container-low rounded-xl px-2.5 py-1 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-outline-variant/10">
+                        <div class="relative">
+                            <select id="stats-timeframe" class="appearance-none bg-none bg-transparent text-on-surface border-none rounded-xl py-1 pl-1 pr-6 text-xs font-bold focus:ring-0 outline-none cursor-pointer">
+                                <option value="weekly">За неделю</option>
+                                <option value="monthly" selected>За месяц</option>
+                                <option value="yearly">За год</option>
+                                <option value="custom">Отчетный период</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute right-0 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-[14px]">expand_more</span>
+                        </div>
+                    </div>
+
+                    <div class="text-right">
+                        <p class="text-xs font-semibold text-outline uppercase tracking-wider mb-0.5">Средства на картах</p>
+                        <h2 class="text-2xl font-bold text-on-background" id="stats-balance-display">0.00 ₽</h2>
+                    </div>
+                </div>
+
+                <!-- Custom Date Range Picker Container -->
+                <div id="stats-date-range-container" class="flex gap-2 bg-surface-container-lowest p-3 border border-outline-variant/30 rounded-2xl hidden">
+                    <div class="flex-1 flex flex-col gap-0.5">
+                        <label class="text-[9px] font-bold text-outline uppercase">С даты</label>
+                        <input id="stats-start-date" type="date" class="w-full bg-surface-container border border-outline-variant/20 rounded-xl p-2 text-xs font-semibold text-on-surface outline-none focus:ring-1 focus:ring-primary"/>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-0.5">
+                        <label class="text-[9px] font-bold text-outline uppercase">По дату</label>
+                        <input id="stats-end-date" type="date" class="w-full bg-surface-container border border-outline-variant/20 rounded-xl p-2 text-xs font-semibold text-on-surface outline-none focus:ring-1 focus:ring-primary"/>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Chart Area -->
+            <div class="bg-surface-container-lowest rounded-3xl p-inset-card shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-outline-variant/30 relative overflow-hidden">
+                <div class="absolute inset-0 bg-primary/5 pointer-events-none"></div>
+                <div class="flex justify-between items-end mb-6 relative z-10">
+                    <div>
+                        <h3 class="text-base font-bold text-on-surface">Поток средств</h3>
+                        <p class="text-xs text-outline" id="chart-subtitle">Динамика за 5 периодов</p>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-primary"></div>
+                            <span class="text-xs text-on-surface-variant font-medium">Доход</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-outline-variant"></div>
+                            <span class="text-xs text-on-surface-variant font-medium">Расход</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Horizontally Scrollable wrapper -->
+                <div class="overflow-x-auto hide-scrollbar scroll-smooth" id="chart-scroll-wrapper">
+                    <div class="w-full" id="chart-scroll-inner">
+                        <!-- Dynamic heights calculated in JS -->
+                        <div class="h-44 flex items-end justify-between gap-3 relative z-10" id="stats-bars-container">
+                            <!-- Bar columns generated by JS -->
+                        </div>
+                        
+                        <div class="flex justify-between text-xs font-semibold text-outline mt-4 relative z-10" id="stats-labels-container">
+                            <!-- Labels generated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bento Grid for Insights & Breakdown -->
+            <div class="grid grid-cols-2 gap-stack-md">
+                <!-- Insight 1 -->
+                <div class="bg-surface-container-lowest p-4 rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-outline-variant/30 flex flex-col justify-between">
+                    <span class="text-xs font-semibold text-outline block mb-1">Всего доходов</span>
+                    <h4 class="text-lg font-bold text-on-background" id="stats-income-total">0.00 ₽</h4>
+                    <div class="mt-2 text-xs font-bold text-primary flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">trending_up</span>
+                        <span id="stats-income-sublabel">Поступления</span>
+                    </div>
+                </div>
+                <!-- Insight 2 -->
+                <div class="bg-surface-container-lowest p-4 rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-outline-variant/30 flex flex-col justify-between">
+                    <span class="text-xs font-semibold text-outline block mb-1">Всего расходов</span>
+                    <h4 class="text-lg font-bold text-on-background" id="stats-expense-total">0.00 ₽</h4>
+                    <div class="mt-2 text-xs font-bold text-error flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">trending_down</span>
+                        <span id="stats-expense-sublabel">Траты</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Incomes Breakdown (Added for income categories split) -->
+            <div class="bg-surface-container-lowest p-inset-card rounded-3xl shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-outline-variant/30">
+                <h3 class="text-base font-bold text-on-surface mb-4">Категории доходов</h3>
+                <div class="flex flex-col gap-4" id="stats-income-categories-container">
+                    <!-- Income categories progress will load here -->
+                </div>
+            </div>
+
+            <!-- Top Expenses Breakdown -->
+            <div class="bg-surface-container-lowest p-inset-card rounded-3xl shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-outline-variant/30">
+                <h3 class="text-base font-bold text-on-surface mb-4">Категории трат</h3>
+                <div class="flex flex-col gap-4" id="stats-categories-container">
+                    <!-- Categories progress will load here -->
+                </div>
+            </div>
+
+            <!-- Transfers Breakdown -->
+            <div class="bg-surface-container-lowest p-inset-card rounded-3xl shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-outline-variant/30" id="stats-transfers-section">
+                <h3 class="text-base font-bold text-on-surface mb-4">Переводы</h3>
+                <div class="flex flex-col gap-4" id="stats-transfers-container">
+                    <!-- Transfers progress will load here -->
+                </div>
+            </div>
+        </main>
+
+        <!-- VIEW 3: INVESTMENTS (INVESTMENTS PORTFOLIO SCREEN) -->
+        <main id="view-investments" class="px-container-margin flex flex-col gap-stack-lg w-full hidden">
+            <!-- Investment Summary Card -->
+            <section class="bg-surface-container-lowest rounded-3xl p-inset-card border-neutral shadow-[0px_4px_20px_rgba(0,0,0,0.03)] relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] -z-10"></div>
+                <h2 class="text-xs font-semibold text-outline uppercase tracking-wider mb-1">Инвестиционный портфель</h2>
+                <div class="flex items-end justify-between">
+                    <div>
+                        <div class="text-3xl font-bold text-on-surface" id="investments-total-display">0.00 ₽</div>
+                        <div class="flex items-center gap-1 mt-1">
+                            <span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">arrow_upward</span>
+                            <span class="text-xs font-bold text-primary" id="portfolio-today-gain">+0.0% (0 ₽)</span>
+                            <span class="text-xs text-outline ml-1">Сегодня</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons: Пополнить актив & Продать актив -->
+                <div class="grid grid-cols-2 gap-gutter mt-stack-md pt-stack-md border-t border-outline-variant/20">
+                    <button id="btn-asset-deposit" class="bg-primary-gradient text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        <span class="material-symbols-outlined text-[16px]">add_circle</span> Пополнить актив
+                    </button>
+                    <button id="btn-asset-sell-trigger" class="bg-primary/10 text-primary py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        <span class="material-symbols-outlined text-[16px]">sell</span> Продать актив
+                    </button>
+                </div>
+            </section>
+
+            <!-- Section Title -->
+            <div class="flex justify-between items-end">
+                <h3 class="text-base font-bold text-on-surface">Мои Активы</h3>
+                <span class="text-xs text-outline" id="assets-count">0 активов</span>
+            </div>
+
+            <!-- Asset Filters -->
+            <div class="flex gap-2 overflow-x-auto pb-1 hide-scrollbar" id="portfolio-filter-chips">
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-primary text-white border-neutral shadow-sm shrink-0 active:scale-95 transition-all" data-filter="all">Все</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-filter="shares">Акции</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-filter="bonds">Облигации</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-filter="crypto">Крипта</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-filter="realty">Недвижимость</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-filter="deposit">Вклады</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-filter="other">Другое</button>
+            </div>
+
+            <!-- Asset Grid -->
+            <div class="grid grid-cols-2 gap-gutter" id="assets-list-container">
+                <!-- Loaded dynamically in JS -->
+            </div>
+        </main>
+
+        <!-- VIEW 4: HISTORY (FULL TRANSACTION SCREEN) -->
+        <main id="view-history" class="px-container-margin flex flex-col gap-stack-lg w-full hidden">
+            <!-- Header & Search -->
+            <div class="flex flex-col gap-2">
+                <h3 class="text-base font-bold text-on-surface">История операций</h3>
+                <div class="relative">
+                    <input id="history-search" class="w-full bg-surface-container border border-outline-variant/30 rounded-xl py-2.5 pl-10 pr-4 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="Поиск по описанию..." type="text"/>
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+                </div>
+            </div>
+
+            <!-- Category Filters -->
+            <div class="flex gap-2 overflow-x-auto pb-1 hide-scrollbar" id="history-filter-chips">
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-primary text-white border-neutral shadow-sm shrink-0 active:scale-95 transition-all" data-category="all">Все</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-category="Продукты">Продукты</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-category="Кафе и рестораны">Кафе</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-category="Транспорт">Транспорт</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-category="Развлечения">Развлечения</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-category="Инвестиции">Инвестиции</button>
+                <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container text-outline border-neutral hover:opacity-90 shrink-0 active:scale-95 transition-all" data-category="Зарплата">Зарплата</button>
+            </div>
+
+            <!-- Transactions Container -->
+            <section class="bg-surface-container-lowest rounded-3xl p-inset-card shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border-neutral flex flex-col gap-1">
+                <div class="flex flex-col gap-1" id="history-list-container">
+                    <!-- Loaded dynamically -->
+                </div>
+            </section>
+        </main>
+
+        <!-- VIEW 5: SETTINGS -->
+        <main id="view-settings" class="px-container-margin flex flex-col gap-stack-lg w-full hidden">
+            <h3 class="text-base font-bold text-on-surface">Настройки системы</h3>
+            
+
+
+            <section class="bg-surface-container-lowest rounded-3xl p-inset-card shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border-neutral flex flex-col gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-outline uppercase tracking-wider mb-2" id="lbl-setting-gemini-key">Ключ Gemini API</label>
+                    <input id="setting-gemini-key" class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface focus:border-primary focus:ring-0 outline-none" type="password" placeholder="Введите ваш API-ключ Gemini..."/>
+                    <p class="text-xs text-outline mt-1.5 leading-normal" id="lbl-setting-gemini-key-desc">
+                        Ключ используется только на вашем устройстве для распознавания текстовых транзакций и никогда не передается на сервер.
+                    </p>
+                </div>
+                <div class="hidden mt-2 flex items-center justify-between border-t border-outline-variant/20 pt-4">
+                    <div class="flex flex-col pr-4">
+                        <label class="text-xs font-bold text-on-surface" id="lbl-setting-confirm-ai">Подтверждать транзакции ИИ</label>
+                        <span class="text-[10px] text-outline leading-tight mt-0.5" id="lbl-setting-confirm-ai-desc">Показывать модальное окно перед сохранением распознанных данных</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input type="checkbox" id="setting-confirm-ai" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-surface-container-low peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-outline after:border-outline-variant after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-checked:after:bg-white peer-checked:after:border-white"></div>
+                    </label>
+                </div>
+            </section>
+
+            <!-- Currency Settings -->
+            <section class="bg-surface-container-lowest rounded-3xl p-inset-card shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border-neutral flex flex-col gap-4">
+                <h4 class="text-sm font-bold text-on-surface" id="lbl-setting-currency-header">Валюта интерфейса</h4>
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1" id="lbl-setting-expenses-currency">Валюта операций (Доходы/Расходы)</label>
+                        <select id="setting-expenses-currency" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface outline-none">
+                            <option value="RUB" selected>Рубли (₽)</option>
+                            <option value="USD">Доллары ($)</option>
+                            <option value="EUR">Евро (€)</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1" id="lbl-setting-portfolio-currency">Валюта инвестиций (Портфель)</label>
+                        <select id="setting-portfolio-currency" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface outline-none">
+                            <option value="RUB">Рубли (₽)</option>
+                            <option value="USD">Доллары ($)</option>
+                            <option value="EUR">Евро (€)</option>
+                        </select>
+                    </div>
+                    <div class="hidden flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1" id="lbl-setting-language">Язык интерфейса</label>
+                        <select id="setting-language" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface outline-none">
+                            <option value="ru" selected>Русский</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button id="btn-save-settings" class="w-full bg-primary text-white py-3 rounded-xl text-sm font-semibold shadow-md hover:opacity-90 transition-opacity active:scale-95 mt-2">
+                    Сохранить настройки
+                </button>
+            </section>
+
+            <!-- Chart Settings Section -->
+            <section class="bg-surface-container-lowest rounded-3xl p-inset-card shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border-neutral flex flex-col gap-4">
+                <h4 id="lbl-setting-charts-header" class="text-sm font-bold text-on-surface">Интеграция графиков</h4>
+                <div class="flex items-center justify-between">
+                    <div class="flex flex-col pr-4">
+                        <label id="lbl-setting-autoload-chart-title" class="text-xs font-bold text-on-surface">Автозагрузка графиков</label>
+                        <span id="lbl-setting-autoload-chart-desc" class="text-[10px] text-outline leading-tight mt-0.5">Автоматически загружать виджет TradingView при просмотре актива</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input type="checkbox" id="setting-autoload-chart" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-surface-container-low peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-outline after:border-outline-variant after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-checked:after:bg-white peer-checked:after:border-white"></div>
+                    </label>
+                </div>
+            </section>
+
+            <!-- Danger Zone -->
+            <section class="bg-surface-container-lowest rounded-3xl p-inset-card shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border-neutral flex flex-col gap-3">
+                <h4 id="lbl-setting-reset-header" class="text-sm font-bold text-on-surface">Сброс данных</h4>
+                <p id="lbl-setting-reset-desc" class="text-xs text-outline">Удаление всей локальной базы транзакций и восстановление начальных счетов.</p>
+                <button id="btn-reset-db" class="w-full bg-error-container text-error py-3 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity active:scale-95">
+                    Очистить базу данных
+                </button>
+            </section>
+
+            <!-- Logout Section -->
+            <section class="bg-surface-container-lowest rounded-3xl p-inset-card shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border-neutral flex flex-col gap-3 mb-8">
+                <h4 id="lbl-setting-logout-header" class="text-sm font-bold text-on-surface">Выход из системы</h4>
+                <p id="lbl-setting-logout-desc" class="text-xs text-outline">Выйти из текущей сессии. Для повторного входа в аккаунт потребуется ключ доступа.</p>
+                <button id="btn-logout" class="w-full bg-primary/10 text-primary py-3 rounded-[32px] text-sm font-bold hover:bg-primary/15 transition-colors active:scale-95">
+                    Выйти из аккаунта
+                </button>
+            </section>
+        </main>
+
+        <!-- MODAL 1: AI / MANUAL TRANSACTION CONFIRMATION (ONLY EXPENSE/INCOME TYPES) -->
+        <div id="ai-confirm-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center px-4 hidden">
+            <div class="bg-surface-container-lowest w-full max-w-md rounded-3xl p-6 shadow-xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 border-neutral">
+                <h3 class="text-base font-bold text-on-surface">Операция транзакции</h3>
+                <p class="text-xs text-outline">Пожалуйста, проверьте и подтвердите детали финансовой операции:</p>
+                
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">Сумма (₽)</label>
+                        <input id="modal-tx-amount" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface" type="number" step="0.01"/>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">Тип операции</label>
+                        <select id="modal-tx-type" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface">
+                            <option value="expense">Расход</option>
+                            <option value="income">Доход</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[11px] font-bold text-outline uppercase tracking-wider">Категория</label>
+                            <div class="flex gap-1.5">
+                                <button id="btn-add-category" class="text-primary hover:bg-primary/10 rounded px-1.5 py-0.5 text-[10px] font-bold active:scale-95 flex items-center gap-0.5 transition-colors border border-primary/20">
+                                    <span class="material-symbols-outlined text-[12px] font-bold">add</span> Добавить
+                                </button>
+                                <button id="btn-delete-category" class="text-error hover:bg-error/10 rounded px-1.5 py-0.5 text-[10px] font-bold active:scale-95 flex items-center gap-0.5 transition-colors border border-error/20">
+                                    <span class="material-symbols-outlined text-[12px] font-bold">delete</span> Удалить
+                                </button>
+                            </div>
+                        </div>
+                        <select id="modal-tx-category" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface">
+                            <option value="Продукты">Продукты</option>
+                            <option value="Транспорт">Транспорт</option>
+                            <option value="Кафе и рестораны">Кафе и рестораны</option>
+                            <option value="Жилье и ЖКХ">Жилье и ЖКХ</option>
+                            <option value="Развлечения">Развлечения</option>
+                            <option value="Здоровье">Здоровье</option>
+                            <option value="Зарплата">Зарплата</option>
+                            <option value="Инвестиции">Инвестиции</option>
+                            <option value="Другое">Другое</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">Описание / Заметка</label>
+                        <input id="modal-tx-desc" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface" type="text" placeholder="Введите комментарий..."/>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-2">
+                    <button id="btn-modal-cancel" class="flex-1 bg-surface-container text-outline py-3 rounded-xl text-sm font-semibold active:scale-95 transition-transform">Отмена</button>
+                    <button id="btn-modal-confirm" class="flex-1 bg-primary text-white py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform shadow-md">Сохранить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 2: BUY/DEPOSIT INVESTMENT ASSET -->
+        <div id="asset-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center px-4 hidden">
+            <div class="bg-surface-container-lowest w-full max-w-md rounded-3xl p-6 shadow-xl flex flex-col gap-4 border-neutral">
+                <h3 class="text-base font-bold text-on-surface" id="asset-modal-title">Пополнить актив</h3>
+                <p class="text-xs text-outline">Впишите детали покупки инвестиционного актива. Покупка спишется с вашей карты.</p>
+                
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">Тип инвестиционного актива</label>
+                        <select id="asset-type" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface">
+                            <option value="shares">Акции</option>
+                            <option value="bonds">Облигации</option>
+                            <option value="crypto">Криптовалюта</option>
+                            <option value="realty">Недвижимость</option>
+                            <option value="deposit">Банковский вклад</option>
+                            <option value="other">Другое</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col relative">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">Символ актива (например: BTC, AAPL)</label>
+                        <input id="asset-symbol" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface" type="text" placeholder="Укажите тикер..." autocomplete="off"/>
+                        <div id="asset-symbol-dropdown" class="absolute left-0 right-0 top-full mt-1 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-lg max-h-48 overflow-y-auto hidden z-50">
+                            <!-- Live search items loaded dynamically -->
+                        </div>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">Добавляемое количество</label>
+                        <input id="asset-quantity" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface" type="number" step="0.0001" placeholder="0.00"/>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">Цена сделки</label>
+                        <input id="asset-price" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface" type="number" step="0.01" placeholder="0.00"/>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-2">
+                    <button id="btn-asset-delete" class="flex-1 bg-error-container text-error py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform hidden">Удалить</button>
+                    <button id="btn-asset-cancel" class="flex-1 bg-surface-container text-outline py-3 rounded-xl text-sm font-semibold active:scale-95 transition-transform">Отмена</button>
+                    <button id="btn-asset-confirm" class="flex-1 bg-primary text-white py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform shadow-md">Купить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 3: SELL/WITHDRAW INVESTMENT ASSET -->
+        <div id="sell-asset-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center px-4 hidden">
+            <div class="bg-surface-container-lowest w-full max-w-md rounded-3xl p-6 shadow-xl flex flex-col gap-4 border-neutral">
+                <h3 class="text-base font-bold text-on-surface">Продать актив</h3>
+                <p class="text-xs text-outline">Выберите актив для продажи. Сумма выручки зачислится обратно на баланс карты как доход.</p>
+                
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">Актив для продажи</label>
+                        <select id="sell-asset-symbol" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface">
+                            <!-- Populated dynamically based on portfolio assets -->
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">Продаваемое количество</label>
+                        <div class="flex gap-2">
+                            <input id="sell-asset-quantity" class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface outline-none" type="number" step="0.0001" placeholder="0.00"/>
+                            <button id="btn-sell-asset-max" type="button" class="px-4 py-3 bg-primary/10 text-primary hover:bg-primary/15 rounded-xl font-bold text-xs transition-colors shrink-0">MAX</button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">Цена продажи</label>
+                        <input id="sell-asset-price" class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm font-semibold text-on-surface" type="number" step="0.01" placeholder="0.00"/>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-2">
+                    <button id="btn-sell-asset-cancel" class="flex-1 bg-surface-container text-outline py-3 rounded-xl text-sm font-semibold active:scale-95 transition-transform">Отмена</button>
+                    <button id="btn-sell-asset-confirm" class="flex-1 bg-primary text-white py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform shadow-md">Продать</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 4: ASSET DETAILS VIEW WITH CHART & HISTORY -->
+        <div id="asset-details-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center px-4 hidden">
+            <div class="bg-surface-container-lowest w-full max-w-md rounded-3xl p-6 shadow-xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 border-neutral max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-base font-bold text-on-surface" id="details-asset-symbol">Asset Ticker</h3>
+                    <button id="btn-close-details" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-variant/20 transition-colors">
+                        <span class="material-symbols-outlined text-[20px] text-outline">close</span>
+                    </button>
+                </div>
+                
+                <!-- Chart Container -->
+                <div class="w-full bg-surface-container-low rounded-2xl p-2 border border-outline-variant/20">
+                    <div id="details-chart-area" class="w-full h-[200px] flex items-center justify-center text-outline text-xs relative">
+                        <span id="chart-placeholder-text">Загрузка графика...</span>
+                    </div>
+                </div>
+
+                <!-- Info Cards -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-surface-container-low rounded-xl p-3 flex flex-col">
+                        <span class="text-[9px] font-bold text-outline uppercase tracking-wider">Текущая цена</span>
+                        <span class="text-sm font-bold text-on-surface mt-1" id="details-current-price">0.00 $</span>
+                    </div>
+                    <div class="bg-surface-container-low rounded-xl p-3 flex flex-col">
+                        <span class="text-[9px] font-bold text-outline uppercase tracking-wider">Цена входа</span>
+                        <span class="text-sm font-bold text-on-surface mt-1" id="details-entry-price">0.00 $</span>
+                    </div>
+                    <div class="bg-surface-container-low rounded-xl p-3 flex flex-col">
+                        <span class="text-[9px] font-bold text-outline uppercase tracking-wider">Количество</span>
+                        <span class="text-sm font-bold text-on-surface mt-1" id="details-quantity">0.00 шт.</span>
+                    </div>
+                    <div class="bg-surface-container-low rounded-xl p-3 flex flex-col">
+                        <span class="text-[9px] font-bold text-outline uppercase tracking-wider">Стоимость</span>
+                        <span class="text-sm font-bold text-on-surface mt-1" id="details-total-value">0.00 $</span>
+                    </div>
+                </div>
+
+                <!-- Operations History -->
+                <div class="flex flex-col gap-2">
+                    <h4 class="text-xs font-bold text-on-surface uppercase tracking-wider">История операций</h4>
+                    <div id="details-tx-history" class="flex flex-col gap-2 max-h-[150px] overflow-y-auto pr-1">
+                        <!-- Tx items will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation Bar (Home/Обзор exactly in the middle) -->
+        <nav id="app-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[480px] w-full z-50 rounded-t-3xl bg-surface/90 dark:bg-background/90 backdrop-blur-xl border-t border-outline-variant/30 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] h-[72px] hidden">
+            <div class="flex justify-around items-center h-full w-full">
+                <!-- Stats (1) -->
+                <button id="tab-stats" class="flex flex-col items-center justify-center text-outline rounded-full p-2 transition-all">
+                    <span class="material-symbols-outlined text-[24px]">bar_chart</span>
+                    <span class="text-[9px] font-semibold mt-0.5">Анализ</span>
+                </button>
+                <!-- Invest (2) -->
+                <button id="tab-invest" class="flex flex-col items-center justify-center text-outline rounded-full p-2 transition-all">
+                    <span class="material-symbols-outlined text-[24px]">account_balance_wallet</span>
+                    <span class="text-[9px] font-semibold mt-0.5">Портфель</span>
+                </button>
+                <!-- Home / Overview (3 - MIDDLE) -->
+                <button id="tab-home" class="flex flex-col items-center justify-center text-primary relative after:content-[''] after:w-1 after:h-1 after:bg-primary after:rounded-full after:mt-1 rounded-full p-2 transition-all">
+                    <span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">home</span>
+                    <span class="text-[9px] font-bold mt-0.5">Обзор</span>
+                </button>
+                <!-- History (4) -->
+                <button id="tab-history" class="flex flex-col items-center justify-center text-outline rounded-full p-2 transition-all">
+                    <span class="material-symbols-outlined text-[24px]">history</span>
+                    <span class="text-[9px] font-semibold mt-0.5">История</span>
+                </button>
+                <!-- Settings (5) -->
+                <button id="tab-settings" class="flex flex-col items-center justify-center text-outline rounded-full p-2 transition-all">
+                    <span class="material-symbols-outlined text-[24px]">settings</span>
+                    <span class="text-[9px] font-semibold mt-0.5">Настройки</span>
+                </button>
+            </div>
+        </nav>
+
+    </div>
+
+    <!-- App JS -->
+    <script src="js/app.js"></script>
+</body>
+</html>

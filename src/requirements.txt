@@ -1,0 +1,5 @@
+fastapi
+pydantic
+python-telegram-bot
+python-dotenv
+httpx
