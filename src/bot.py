@@ -246,7 +246,7 @@ def get_fallback_parse(text: str, categories: list) -> dict:
         "confidence": 0.5
     }
 
-async def call_ai_api(prompt: str, api_key: str, system_instruction: str = None, mime_type: str = None, file_bytes: bytes = None) -> str:
+async def call_ai_api(prompt: str, api_key: str, system_instruction: str = None, mime_type: str = None, file_bytes: bytes = None, response_json: bool = False) -> str:
     """Call AI API with automatic retry on 429 Too Many Requests."""
     max_retries = 3
     base_delay = 5  # seconds
@@ -286,9 +286,10 @@ async def call_ai_api(prompt: str, api_key: str, system_instruction: str = None,
                     messages.append({"role": "user", "content": prompt})
                 payload = {
                     "model": "gpt-4o-mini",
-                    "messages": messages,
-                    "response_format": {"type": "json_object"}
+                    "messages": messages
                 }
+                if response_json:
+                    payload["response_format"] = {"type": "json_object"}
                 async with httpx.AsyncClient() as client:
                     resp = await client.post(url, headers=headers, json=payload, timeout=30.0)
                     resp.raise_for_status()
@@ -711,7 +712,8 @@ async def process_transaction_input(message, context, input_text=None, file_byte
                 api_key=api_key,
                 system_instruction=system_instruction,
                 mime_type=mime_type,
-                file_bytes=file_bytes
+                file_bytes=file_bytes,
+                response_json=True
             )
             parsed = clean_and_parse_json(ai_response)
         except Exception as e:
