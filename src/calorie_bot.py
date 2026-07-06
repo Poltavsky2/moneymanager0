@@ -713,6 +713,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "menu_add_log":
         await prompt_add_log(query, context)
         
+    elif data == "menu_history":
+        await show_history(query, context)
+        
     elif data == "settings_set_key":
         context.user_data['state'] = "AWAITING_API_KEY"
         keyboard = [
