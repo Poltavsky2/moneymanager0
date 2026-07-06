@@ -763,6 +763,17 @@ async def process_transaction_input(message, context, input_text=None, file_byte
         }]
         
     for t in tx_list:
+        try:
+            t["amount"] = float(t.get("amount") or 0.0)
+        except:
+            t["amount"] = 0.0
+            
+        t["type"] = str(t.get("type") or "expense").strip().lower()
+        if t["type"] not in ["income", "expense"]:
+            t["type"] = "expense"
+            
+        t["category"] = str(t.get("category") or "Другое").strip()
+        t["description"] = str(t.get("description") or "")
         t["date"] = datetime.now().strftime("%Y-%m-%d")
         
     context.user_data["pending_tx_queue"] = tx_list[1:]
