@@ -282,6 +282,72 @@ async def analyze_food_gemini(api_key: str, text: str = None, photo_bytes: bytes
         text_response = result['candidates'][0]['content']['parts'][0]['text']
         return parse_and_clean_json(text_response)
 
+
+import hashlib
+
+async def generate_report_gemini(api_key: str, data_text: str) -> str:
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    
+    system_prompt = """Ты — экспертный ИИ-нутрициолог. Твоя задача — составить подробный отчет по питанию пользователя за запрошенный период на основе предоставленных данных.
+Ты должен строго следовать этой структуре и использовать эти эмодзи:
+
+1. 📊 Главные цифры дня (КБЖУ и Баланс)
+Калории: Сколько съедено / План в ккал (Процент выполнения).
+Белки: Сколько съедено / План в граммах (Процент выполнения).
+Жиры: Сколько съедено / План в граммах (Процент выполнения).
+Углеводы: Сколько съедено / План в граммах (Процент выполнения).
+Энергетический баланс: Итоговый статус (Дефицит / Профицит / Поддержание) с учетом базового метаболизма и шагов.
+
+2. 🥦 Качество рациона (Микронутриенты и полезность)
+Клетчатка: Общее количество в граммах, выполнение нормы, оценка влияния на пищеварение.
+Витамины-лидеры: Топ-3 витамина или минерала, норму которых пользователь сегодня перевыполнил (например: Витамин А, С, Железо).
+Дефициты дня: Чего критически не хватило организму из съеденных продуктов (например: Кальций, Омега-3).
+Качество углеводов: Соотношение сложных углеводов (крупы, овощи) и простых (сахар, мучное) в процентах или оценкой.
+Индекс полезности: Общая оценка чистоты рациона за день от 1 до 10.
+
+3. 💧 Гидратация (Водный баланс)
+Объем воды: Выпито чистой воды в мл / Цель (Процент выполнения).
+Влияние на организм: Краткий вывод ИИ.
+
+4. 🕒 Биоритмы и Тайминг (Когда была еда)
+Главный прием пищи: На какой период пришелся пик калорийности (Завтрак / Обед / Ужин).
+Оценка интервалов: Были ли слишком долгие голодные перерывы или перекусы на ходу.
+Поздний ужин: Был ли перебор по калориям или тяжелой еде менее чем за 3 часа до сна.
+
+5. ⚖️ Главный вердикт (Хорошо это или нет?)
+Общий итог дня: Четкий вывод одной-двумя фразами.
+Похвала за день: За что ИИ хвалит пользователя.
+Главная ошибка дня: На что нужно обратить внимание.
+
+6. 🚀 Конкретные шаги на завтра (Как улучшить)
+Совет по КБЖУ: Простая рекомендация, как исправить сегодняшний перекос.
+Совет по продуктам: Что именно добавить в корзину/тарелку.
+Совет по привычкам: Поведенческая рекомендация.
+
+Верни ответ в красивом Markdown. Если данных за период нет, просто напиши, что записей за этот период не найдено.
+"""
+    
+    parts = [
+        {"text": system_prompt},
+        {"text": "Вот данные пользователя за период:\n" + data_text}
+    ]
+    
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {
+            "temperature": 0.7
+        }
+    }
+    
+    proxy_url = os.environ.get("GEMINI_PROXY")
+    async with httpx.AsyncClient(proxy=proxy_url) as client:
+        res = await client.post(url, json=payload, timeout=30.0)
+        if res.status_code == 200:
+            data = res.json()
+            return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "Ошибка генерации отчета.")
+        else:
+            return "Не удалось связаться с ИИ. Попробуйте позже."
+
 async def analyze_food_openai(api_key: str, text: str = None, photo_bytes: bytes = None, voice_bytes: bytes = None) -> dict:
     if voice_bytes:
         # Transcribe audio using Whisper first
@@ -539,6 +605,12 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     elif data == "menu_history":
         await show_history(query, context)
+        
+    elif data == "menu_reports":
+        await show_reports_menu(query, context)
+        
+    elif data.startswith("report_"):
+        await generate_report(query, context, data)
         
     elif data == "settings_set_key":
         context.user_data['state'] = "AWAITING_API_KEY"
@@ -1087,3 +1159,89 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+async def show_reports_menu(query, context):
+    text = "📊 <b>Отчеты от ИИ</b>\n\nВыберите период, за который вы хотите получить подробный аналитический отчет:"
+    keyboard = [
+        [InlineKeyboardButton("📅 За 1 день", callback_data="report_day")],
+        [InlineKeyboardButton("🗓 За месяц", callback_data="report_month")],
+        [InlineKeyboardButton("📆 За 1 год", callback_data="report_year")],
+        [InlineKeyboardButton("♾ За все время", callback_data="report_all")],
+        [InlineKeyboardButton("🔙 Назад", callback_data="menu_main")]
+    ]
+    await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+
+async def generate_report(query, context, period_action):
+    user_id = query.from_user.id
+    period = period_action.split("_")[1] # day, month, year, all
+    
+    await query.edit_message_text("⏳ <i>ИИ анализирует ваши данные и готовит отчет... Это может занять до 20 секунд.</i>", parse_mode="HTML")
+    
+    # Load settings to get API key
+    settings = await get_user_settings(user_id)
+    api_key = settings.get("api_key") or os.environ.get("GEMINI_API_KEY")
+    
+    # Fetch all entries
+    all_entries = await get_diet_entries_firebase(user_id, limit=5000)
+    
+    # Filter by period
+    now = datetime.now()
+    if period == 'day':
+        start_ts = now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+    elif period == 'month':
+        start_ts = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).timestamp()
+    elif period == 'year':
+        start_ts = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0).timestamp()
+    else:
+        start_ts = 0
+        
+    entries = [e for e in all_entries if e.get('timestamp', 0) >= start_ts]
+    
+    if not entries:
+        keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="menu_reports")]]
+        await query.edit_message_text("🤷‍♂️ <b>У вас нет записей за этот период.</b>", parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+        
+    # Create simple data text and calculate hash
+    data_lines = []
+    total_cal = 0
+    total_water = 0
+    total_steps = 0
+    for e in entries:
+        dt = datetime.fromtimestamp(e.get('timestamp', 0)).strftime("%Y-%m-%d %H:%M")
+        if e.get("type") == "water" or e.get("water_ml", 0) > 0:
+            data_lines.append(f"{dt} | Вода: {e.get('water_ml', 0)} мл")
+            total_water += e.get("water_ml", 0)
+        elif e.get("type") == "steps" or e.get("steps_count", 0) > 0:
+            data_lines.append(f"{dt} | Шаги: {e.get('steps_count', 0)}")
+            total_steps += e.get("steps_count", 0)
+        else:
+            cals = e.get("calories", 0)
+            data_lines.append(f"{dt} | {e.get('mealType', 'snack')} | {e.get('food_name', 'Еда')} | {cals} ккал | Белки: {e.get('protein', 0)}, Жиры: {e.get('fat', 0)}, Угл: {e.get('carbs', 0)}")
+            total_cal += cals
+            
+    data_text = "\n".join(data_lines)
+    
+    # Compute simple hash of data
+    data_hash = hashlib.md5(data_text.encode('utf-8')).hexdigest()
+    
+    # Check cache
+    if 'reports_cache' not in context.user_data:
+        context.user_data['reports_cache'] = {}
+        
+    cached_report = context.user_data['reports_cache'].get(period)
+    if cached_report and cached_report.get('hash') == data_hash:
+        # Return cached
+        report_text = cached_report.get('text')
+    else:
+        # Generate new
+        report_text = await generate_report_gemini(api_key, data_text)
+        # Save to cache
+        context.user_data['reports_cache'][period] = {
+            'hash': data_hash,
+            'text': report_text
+        }
+        
+    keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="menu_reports")]]
+    await query.edit_message_text(report_text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
