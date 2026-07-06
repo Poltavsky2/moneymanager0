@@ -606,6 +606,7 @@ def get_main_keyboard():
     if web_app_url and web_app_url != "https://your-ngrok-subdomain.ngrok-free.app":
         keyboard.append([InlineKeyboardButton("📊 Открыть Bioprizma", web_app=WebAppInfo(url=web_app_url))])
     keyboard.append([InlineKeyboardButton("📝 Добавить запись", callback_data="menu_add_log")])
+    keyboard.append([InlineKeyboardButton("📅 История анализов", callback_data="menu_history")])
     keyboard.append([InlineKeyboardButton("⚙️ Настройки", callback_data="menu_settings")])
     return InlineKeyboardMarkup(keyboard)
 
