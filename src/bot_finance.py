@@ -1025,10 +1025,76 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         curr = data.split(":")[1]
         user_data = get_user_data_by_id(user_id)
         settings = user_data.get("settings", {})
-        settings["currency"] = curr
-        user_data["settings"] = settings
-        save_user_data_by_id(user_id, user_data)
-        await show_settings_menu(query.message, context, edit_query=query)
+        old_curr = settings.get("currency", "RUB")
+        
+        if curr == old_curr:
+            await query.answer(f"У вас уже установлена валюта {curr}!", show_alert=True)
+            return
+            
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("💱 Да, пересчитать по курсу", callback_data=f"convert_curr:{curr}:yes")],
+            [InlineKeyboardButton("🔄 Нет, просто поменять значок", callback_data=f"convert_curr:{curr}:no")],
+            [InlineKeyboardButton("❌ Отмена", callback_data="settings_menu")]
+        ])
+        
+        await query.edit_message_text(
+            f"Вы меняете базовую валюту с <b>{old_curr}</b> на <b>{curr}</b>.\n\n"
+            f"Хотите ли вы автоматически конвертировать все ваши предыдущие операции и балансы по свежему курсу валют через Интернет?\n"
+            f"<i>(При отказе, прошлые 1000 {old_curr} станут 1000 {curr})</i>",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        
+    elif data.startswith("convert_curr:"):
+        _, curr, do_convert = data.split(":")
+        user_data = get_user_data_by_id(user_id)
+        settings = user_data.get("settings", {})
+        old_curr = settings.get("currency", "RUB")
+        
+        if do_convert == "yes":
+            await query.edit_message_text("Получаю свежий курс валют... ⏳")
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(f"https://open.er-api.com/v6/latest/{old_curr}")
+                    resp.raise_for_status()
+                    rates = resp.json().get("rates", {})
+                    rate = rates.get(curr)
+                    
+                    if not rate:
+                        raise ValueError(f"Курс {curr} не найден")
+                        
+                accounts = user_data.get("accounts", [])
+                for acc in accounts:
+                    acc["balance"] = round(acc.get("balance", 0.0) * rate, 2)
+                    
+                transactions = user_data.get("transactions", [])
+                for tx in transactions:
+                    tx["amount"] = round(tx.get("amount", 0.0) * rate, 2)
+                    
+                settings["currency"] = curr
+                user_data["settings"] = settings
+                user_data["accounts"] = accounts
+                user_data["transactions"] = transactions
+                save_user_data_by_id(user_id, user_data)
+                
+                await query.answer(f"Успешно! 1 {old_curr} = {rate} {curr}", show_alert=True)
+                await show_settings_menu(query.message, context, edit_query=query)
+                
+            except Exception as e:
+                logger.error(f"Error fetching exchange rate: {e}")
+                keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔙 Назад", callback_data="settings_menu")]
+                ])
+                await query.edit_message_text(
+                    f"❌ Ошибка при загрузке курсов: {e}\n\nПопробуйте позже или выберите вариант 'Просто поменять значок'.",
+                    reply_markup=keyboard
+                )
+        else:
+            settings["currency"] = curr
+            user_data["settings"] = settings
+            save_user_data_by_id(user_id, user_data)
+            await query.answer(f"Валюта изменена на {curr}")
+            await show_settings_menu(query.message, context, edit_query=query)
         
     elif data == "toggle_ai":
         user_data = get_user_data_by_id(user_id)

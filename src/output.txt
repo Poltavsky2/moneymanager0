@@ -1,0 +1,35 @@
+41: CURRENCY_SYMBOLS = {
+207: def format_amount(amount: float, currency: str = "RUB") -> str:
+208: symbol = CURRENCY_SYMBOLS.get(currency, currency)
+421: currency = settings.get("currency", "RUB")
+428: txs_formatted.append(f"- Дата: {tx['date']}, Тип: {'расход' if tx['type']=='expense' else 'доход'}, Категория: {tx['category']}, Сумма: {tx['amount']} {currency}{comment}")
+437: f"Валюта пользователя: {currency}\n"
+627: await update.message.reply_text(f"✅ Сумма успешно изменена на {format_amount(amount, data.get('settings', {}).get('currency', 'RUB'))}!", reply_markup=keyboard)
+670: currency = data.get("settings", {}).get("currency", "RUB")
+678: response += f"{i+1}. {tx['date']} | {t_emoji} <b>{format_amount(tx['amount'], currency)}</b> | {escaped_cat}{comment}\n"
+806: currency = data.get("settings", {}).get("currency", "RUB")
+824: f"💵 <b>Сумма:</b> {format_amount(pending['amount'], currency)}\n"
+956: currency = user_data.get("settings", {}).get("currency", "RUB")
+961: f"💵 {format_amount(pending['amount'], currency)} | {t_emoji} {escaped_cat_name}\n"
+1028: settings["currency"] = curr
+1066: user_data["settings"] = {"currency": "RUB", "ai_enabled": True, "api_key": ""}
+1118: currency = user_data.get("settings", {}).get("currency", "RUB")
+1123: await query.edit_message_text(f"🗑 Удалена операция:\n{deleted_tx['date']} | {t_emoji} <b>{format_amount(deleted_tx['amount'], currency)}</b> | {escaped_cat}", reply_markup=keyboard, parse_mode="HTML")
+1316: currency = settings.get("currency", "RUB")
+1323: f"💱 <b>Валюта:</b> {currency}\n"
+1396: currency = user_data.get("settings", {}).get("currency", "RUB")
+1404: text += f"{i+1}. {tx['date']} | {t_emoji} <b>{format_amount(tx['amount'], currency)}</b> | {escaped_cat}{comment}\n"
+1429: currency = user_data.get("settings", {}).get("currency", "RUB")
+1512: most_expensive_day = f"{formatted_dt} ({format_amount(most_expensive_amt, currency)})"
+1538: top_cats_text += f"• {t_emoji} {escaped_cat}: {format_amount(amt, currency)} ({percentage:.1f}%)\n"
+1554: inc_cats_text += f"• {t_emoji} {escaped_cat}: {format_amount(amt, currency)} ({percentage:.1f}%)\n"
+1560: f"💳 <b>Общий баланс:</b> {format_amount(balance, currency)}\n\n"
+1563: f"<b>Всего расходов:</b> {format_amount(total_expenses, currency)}\n"
+1564: f"<b>Средний расход в день:</b> {format_amount(avg_daily, currency)}\n"
+1568: f"<b>Всего доходов:</b> {format_amount(total_income, currency)}"
+1579: currency = user_data.get("settings", {}).get("currency", "RUB")
+1610: exp_lines.append(f"• {t_emoji} <b>{format_amount(tx['amount'], currency)}</b> | {escaped_cat} ({escaped_desc})")
+1617: inc_lines.append(f"• {t_emoji} <b>{format_amount(tx['amount'], currency)}</b> | {escaped_cat} ({escaped_desc})")
+1820: currency = settings.get("currency", "RUB")
+1827: txs_formatted.append(f"- Дата: {tx['date']}, Тип: {'расход' if tx['type']=='expense' else 'доход'}, Категория: {tx['category']}, Сумма: {tx['amount']} {currency}{comment}")
+1836: f"Валюта пользователя: {currency}\n"
