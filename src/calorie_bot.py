@@ -655,7 +655,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "action_add_diary":
         last_analysis = context.user_data.get('last_analysis')
         if not last_analysis:
-            await query.edit_message_text("⚠️ Ошибка: данные анализа не найдены. Пожалуйста, отправьте запись заново.")
+            keyboard = [[InlineKeyboardButton("🔙 Главное меню", callback_data="menu_main")]]
+            await query.edit_message_text("⚠️ Ошибка: данные анализа не найдены. Пожалуйста, отправьте запись заново.", reply_markup=InlineKeyboardMarkup(keyboard))
             return
             
         input_type = last_analysis.get("type", "food")
@@ -809,7 +810,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         last_analysis = context.user_data.get('last_analysis')
         
         if not last_analysis:
-            await query.edit_message_text("⚠️ Ошибка: потеряны данные анализа еды. Попробуйте еще раз.")
+            keyboard = [[InlineKeyboardButton("🔙 Главное меню", callback_data="menu_main")]]
+            await query.edit_message_text("⚠️ Ошибка: потеряны данные анализа еды. Попробуйте еще раз.", reply_markup=InlineKeyboardMarkup(keyboard))
             return
             
         if weight_type == "auto":
@@ -869,7 +871,11 @@ async def save_and_confirm_entry(query_or_message, context, from_text_reply=Fals
     
     if not flow or not last_analysis:
         msg_func = query_or_message.reply_html if from_text_reply else query_or_message.edit_message_text
-        await msg_func("⚠️ Ошибка сохранения: данные сессии утеряны.")
+        keyboard = [[InlineKeyboardButton("🔙 Главное меню", callback_data="menu_main")]]
+        if from_text_reply:
+            await query_or_message.reply_html("⚠️ Ошибка сохранения: данные сессии утеряны.", reply_markup=InlineKeyboardMarkup(keyboard))
+        else:
+            await query_or_message.edit_message_text("⚠️ Ошибка сохранения: данные сессии утеряны.", reply_markup=InlineKeyboardMarkup(keyboard))
         return
         
     grams = flow['grams']
@@ -963,7 +969,8 @@ async def user_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif state == "AWAITING_TIME":
         # Check time format HH:MM
         if not re.match(r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$", text):
-            await update.message.reply_html("⚠️ Неверный формат времени. Введите в формате ЧЧ:ММ (например, 14:30):")
+            keyboard = [[InlineKeyboardButton("🔙 Главное меню", callback_data="menu_main")]]
+            await update.message.reply_html("⚠️ Неверный формат времени. Введите в формате ЧЧ:ММ (например, 14:30):", reply_markup=InlineKeyboardMarkup(keyboard))
             return
             
         h, m = map(int, text.split(":"))
@@ -999,7 +1006,8 @@ async def user_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if grams <= 0:
                 raise ValueError()
         except ValueError:
-            await update.message.reply_html("⚠️ Пожалуйста, введите положительное число (вес в граммах):")
+            keyboard = [[InlineKeyboardButton("🔙 Главное меню", callback_data="menu_main")]]
+            await update.message.reply_html("⚠️ Пожалуйста, введите положительное число (вес в граммах):", reply_markup=InlineKeyboardMarkup(keyboard))
             return
             
         context.user_data['diary_flow']['grams'] = grams
@@ -1031,7 +1039,8 @@ async def user_media_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         voice_bytes = out.getvalue()
         
     else:
-        await update.message.reply_html("⚠️ Неподдерживаемый тип сообщения. Пожалуйста, отправьте текст, фото или голосовое.")
+        keyboard = [[InlineKeyboardButton("🔙 Главное меню", callback_data="menu_main")]]
+        await update.message.reply_html("⚠️ Неподдерживаемый тип сообщения. Пожалуйста, отправьте текст, фото или голосовое.", reply_markup=InlineKeyboardMarkup(keyboard))
         return
         
     await process_food_input(update, context, photo_bytes=photo_bytes, voice_bytes=voice_bytes)
