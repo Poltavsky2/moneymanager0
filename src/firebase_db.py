@@ -6,8 +6,8 @@ import os
 
 logger = logging.getLogger(__name__)
 
-DUMMY_FIREBASE_URL = "https://finai-premium-default-rtdb.europe-west1.firebasedatabase.app/"
-ENV_FIREBASE_URL = os.environ.get("FIREBASE_URL")
+# Personal JSONBlob Cloud for this specific bot deployment
+JSONBLOB_URL = "https://jsonblob.com/api/jsonBlob/019f3c12-57d4-7bc7-896b-2ec68b01e163"
 
 if os.environ.get("VERCEL"):
     DB_PATH = "/tmp/finance.db"
@@ -48,30 +48,49 @@ DEFAULT_CATEGORIES = [
     { "id": 11, "name": "Другое", "type": "income" }
 ]
 
-def clean_url(url: str) -> str:
-    if not url:
-        url = ENV_FIREBASE_URL or DUMMY_FIREBASE_URL
-    url = url.strip()
-    if not url.endswith("/"):
-        url += "/"
-    return url
+def fetch_all_cloud_data() -> dict:
+    try:
+        req = urllib.request.Request(JSONBLOB_URL, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+            return data if isinstance(data, dict) else {}
+    except Exception as e:
+        logger.error(f"Error fetching from JSONBlob: {e}")
+        return None
+
+def save_all_cloud_data(data: dict):
+    try:
+        req = urllib.request.Request(
+            JSONBLOB_URL,
+            data=json.dumps(data).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            method="PUT"
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
+    except Exception as e:
+        logger.error(f"Error saving to JSONBlob: {e}")
 
 def get_user_data(user_key: str, firebase_url: str = None) -> dict:
-    url = clean_url(firebase_url)
-    is_default = (url == clean_url(DUMMY_FIREBASE_URL))
-    
-    if not is_default:
-        user_url = f"{url}users/{user_key}.json"
-        req = urllib.request.Request(user_url)
-        try:
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = json.loads(resp.read().decode())
-                if data and isinstance(data, dict):
-                    return data
-        except Exception as e:
-            logger.error(f"Error fetching user data from Firebase for {user_key}: {e}. Falling back to SQLite.")
+    # 1. Try Cloud
+    cloud_data = fetch_all_cloud_data()
+    if cloud_data is not None:
+        user_data = cloud_data.get(user_key)
+        if user_data:
+            # Sync to local just in case
+            init_local_table()
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("INSERT OR REPLACE INTO users_data (user_key, data_json) VALUES (?, ?)", 
+                               (user_key, json.dumps(user_data)))
+                conn.commit()
+                conn.close()
+            except:
+                pass
+            return user_data
 
-    # SQLite fallback
+    # 2. Local fallback
     init_local_table()
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -87,26 +106,7 @@ def get_user_data(user_key: str, firebase_url: str = None) -> dict:
     return {}
 
 def save_user_data(user_key: str, data: dict, firebase_url: str = None):
-    url = clean_url(firebase_url)
-    is_default = (url == clean_url(DUMMY_FIREBASE_URL))
-    
-    saved_remote = False
-    if not is_default:
-        user_url = f"{url}users/{user_key}.json"
-        req = urllib.request.Request(
-            user_url,
-            data=json.dumps(data).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="PUT"
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                resp.read()
-                saved_remote = True
-        except Exception as e:
-            logger.error(f"Error saving user data to Firebase for {user_key}: {e}. Saving to SQLite fallback.")
-            
-    # Always save to SQLite as fallback, or if it is the default URL, or if remote save failed
+    # 1. Save Local
     init_local_table()
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -119,8 +119,14 @@ def save_user_data(user_key: str, data: dict, firebase_url: str = None):
         conn.close()
     except Exception as e:
         logger.error(f"Error saving user data to local SQLite for {user_key}: {e}")
-        if not saved_remote:
-            raise e
+        
+    # 2. Save Cloud
+    cloud_data = fetch_all_cloud_data()
+    if cloud_data is None:
+        cloud_data = {} # If failed to fetch, overwrite locally cached cloud obj
+        
+    cloud_data[user_key] = data
+    save_all_cloud_data(cloud_data)
 
 def init_user_if_needed(user_key: str, firebase_url: str = None) -> dict:
     data = get_user_data(user_key, firebase_url)
