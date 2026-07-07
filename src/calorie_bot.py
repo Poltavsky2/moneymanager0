@@ -86,27 +86,6 @@ async def save_diet_entry(user_id: int, meal_type: str, timestamp: int, food_nam
         "steps_count": steps_count
     }
     await save_diet_entry_firebase(user_id, entry_data)
-    
-    entry_id = f"tg_entry_{row_id}"
-    sync_to_firestore(
-        user_id=user_id,
-        entry_id=entry_id,
-        meal_type=meal_type,
-        timestamp=timestamp,
-        food_name=food_name,
-        utility=utility,
-        description=description,
-        calories=calories,
-        protein=protein,
-        fat=fat,
-        carbs=carbs,
-        grams=grams,
-        ingredients_json=ingredients_json,
-        health_score=health_score,
-        warning_type=warning_type,
-        water_ml=water_ml,
-        steps_count=steps_count
-    )
 
 # Initialize DB on import/run
 
@@ -585,15 +564,20 @@ async def show_history(query, context):
             
             dt_str = safe_fromtimestamp(ts).strftime("%d.%m %H:%M")
             meal_emoji = "🍽"
-            if meal_type == "breakfast": meal_emoji = "🍳"
-            elif meal_type == "lunch": meal_emoji = "🍲"
-            elif meal_type == "dinner": meal_emoji = "🍝"
-            elif meal_type == "snack": meal_emoji = "🥪"
-            elif meal_type == "water": meal_emoji = "💧"
-            elif meal_type == "steps": meal_emoji = "👟"
+            meal_rus = meal_type
+            if meal_type == "breakfast": meal_emoji, meal_rus = "🍳", "Завтрак"
+            elif meal_type == "lunch": meal_emoji, meal_rus = "🍲", "Обед"
+            elif meal_type == "dinner": meal_emoji, meal_rus = "🍝", "Ужин"
+            elif meal_type == "snack": meal_emoji, meal_rus = "🥪", "Перекус"
+            elif meal_type == "water": meal_emoji, meal_rus = "💧", "Вода"
+            elif meal_type == "steps": meal_emoji, meal_rus = "👟", "Активность"
             
-            text += f"🗓 <b>{dt_str}</b> | {meal_emoji} {meal_type}\n"
-            text += f"🥑 <i>{food_name}</i>\n"
+            description = html.escape(str(row.get("description", "")))
+            
+            text += f"🗓 <b>{dt_str}</b> | {meal_emoji} {meal_rus}\n"
+            text += f"🥑 <b>{food_name}</b>\n"
+            if description:
+                text += f"📝 <i>{description}</i>\n"
             if cals is not None and cals > 0:
                 text += f"🔥 <b>{cals:.0f} ккал</b> (Б:{prot:.0f} Ж:{fat:.0f} У:{carbs:.0f})\n"
             text += "\n"
