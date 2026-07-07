@@ -254,7 +254,7 @@ def validate_food_data(data) -> dict:
     return validated
 
 async def analyze_food_gemini(api_key: str, text: str = None, photo_bytes: bytes = None, voice_bytes: bytes = None) -> dict:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
     
     parts = [{"text": PROMPT}]
     if text:
@@ -303,7 +303,7 @@ async def analyze_food_gemini(api_key: str, text: str = None, photo_bytes: bytes
 import hashlib
 
 async def generate_report_gemini(api_key: str, data_text: str) -> str:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
     
     system_prompt = """Ты — экспертный ИИ-нутрициолог. Твоя задача — составить подробный отчет по питанию пользователя за запрошенный период на основе предоставленных данных.
 Ты должен строго следовать этой структуре и использовать эти эмодзи:
