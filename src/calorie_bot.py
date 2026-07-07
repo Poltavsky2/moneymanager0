@@ -365,7 +365,7 @@ async def generate_report_gemini(api_key: str, data_text: str) -> str:
                 data = res.json()
                 return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "Ошибка генерации отчета.")
             else:
-                return "Не удалось связаться с ИИ. Сервер перегружен или недоступен. Попробуйте позже."
+                return f"Не удалось связаться с ИИ. Сервер вернул ошибку {res.status_code}: {res.text}"
     except httpx.TimeoutException:
         return "Время ожидания ИИ истекло (слишком большой объем данных). Попробуйте выбрать меньший период или повторить запрос."
     except Exception as e:
@@ -1229,7 +1229,12 @@ async def generate_report(query, context, period_action):
         }
         
     keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="menu_reports")]]
-    await query.edit_message_text(report_text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+    try:
+        await query.edit_message_text(report_text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+    except Exception as e:
+        logger.error(f"Markdown parsing error or other error in report: {e}")
+        # Fallback without Markdown
+        await query.edit_message_text(report_text, reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 def main():
