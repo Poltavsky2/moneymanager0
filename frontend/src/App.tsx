@@ -114,9 +114,19 @@ const parseISODate = (iso: string) => {
 // --- Norm calculations ---
 export const calculateDefaultWater = (bio?: UserBiologicalData) => {
   if (!bio?.weight) return 2000;
-  let base = bio.weight * 35; // 35ml per kg
+  
+  // 1. Base need
+  let base = bio.weight * (bio.gender === 'female' ? 30 : 35);
+  
+  // 2. Activity correction
   if (bio.activity === 'medium') base += 500;
   if (bio.activity === 'high') base += 1000;
+  
+  // 3. Goal correction
+  if (bio.goalCategory === 'weight_loss' || bio.goalCategory === 'weight_gain') {
+    base += 400;
+  }
+  
   return Math.round(base);
 };
 
@@ -371,7 +381,6 @@ interface BalanceCardProps {
   isLocked: boolean;
   onOpenSetup: () => void;
   onShowDetails?: () => void;
-  streakInfo?: { count: number; avgScore: number };
 }
 
 const BalanceCard: React.FC<BalanceCardProps> = ({ 
@@ -380,15 +389,8 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
   targets, 
   isLocked, 
   onOpenSetup,
-  onShowDetails,
-  streakInfo
+  onShowDetails
 }) => {
-  const getStreakColor = (count: number) => {
-    if (count >= 30) return 'text-amber-500 fill-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]'; // Gold
-    if (count >= 14) return 'text-slate-300 fill-slate-300 drop-shadow-[0_0_8px_rgba(203,213,225,0.5)]'; // Silver
-    if (count >= 7) return 'text-orange-700 fill-orange-700 drop-shadow-[0_0_8px_rgba(194,65,12,0.5)]'; // Bronze
-    return 'text-slate-500 fill-slate-500'; // Stone (Level 1)
-  };
 
   return (
     <section className="relative bg-slate-50 rounded-[32px] p-6 border border-slate-200 shadow-sm overflow-hidden min-h-[180px] w-full shrink-0">
@@ -457,20 +459,6 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
           </div>
         </div>
       </div>
-
-      {streakInfo && streakInfo.count > 0 && (
-        <div className="absolute bottom-4 left-4 z-10 animate-in fade-in zoom-in duration-700">
-          <div className="relative flex items-center justify-center transform transition-transform hover:scale-110">
-            <Flame 
-              size={streakInfo.count >= 100 ? 36 : streakInfo.count >= 10 ? 32 : 28} 
-              className={`${getStreakColor(streakInfo.count)} transition-all duration-300`} 
-            />
-            <span className={`absolute inset-0 flex items-center justify-center font-black text-white ${streakInfo.count >= 100 ? 'text-[7px] mt-1.5' : streakInfo.count >= 10 ? 'text-[8px] mt-1' : 'text-[9px] mt-1'} tracking-tighter drop-shadow-sm`}>
-              {streakInfo.count}
-            </span>
-          </div>
-        </div>
-      )}
 
       {onShowDetails && (
         <button 
@@ -575,29 +563,14 @@ const LongTermAnalysisModal = ({
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                     <div className="w-8 h-8 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center shrink-0">
-                      <Calendar size={18} />
+                      <Target size={18} />
                     </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">1. Когда и как часто вы едите</h3>
+                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">1. Главные цифры дня</h3>
                   </div>
-                  <InfoTooltip text="Мы замеряем время между вашим самым первым и самым последним приемом пищи в течение дня." />
+                  <InfoTooltip text="КБЖУ и энергетический баланс: профицит или дефицит, и как это влияет на энергию." />
                 </div>
                 <div className="p-5 bg-blue-50/30 rounded-3xl border border-blue-50">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.timing}"</p>
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <div className="flex items-center justify-between gap-3 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                    <div className="w-8 h-8 bg-purple-50 text-purple-500 rounded-lg flex items-center justify-center shrink-0">
-                      <CheckCircle2 size={18} />
-                    </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">2. Натуральность еды</h3>
-                  </div>
-                  <InfoTooltip text="ИИ делит продукты на группы: от цельных (овощи, мясо) до заводских (чипсы, сосиски) по системе NOVA." />
-                </div>
-                <div className="p-5 bg-purple-50/30 rounded-3xl border border-purple-100">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.novaGroups}"</p>
+                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.numbers}"</p>
                 </div>
               </section>
 
@@ -605,14 +578,44 @@ const LongTermAnalysisModal = ({
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                     <div className="w-8 h-8 bg-emerald-50 text-emerald-500 rounded-lg flex items-center justify-center shrink-0">
-                      <BookOpen size={18} />
+                      <Leaf size={18} />
                     </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">3. Разнообразие продуктов</h3>
+                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">2. Качество рациона</h3>
                   </div>
-                  <InfoTooltip text="Мы считаем количество разных видов овощей, белков и злаков. Цель — более 30 разных продуктов для здоровья микрофлоры." />
+                  <InfoTooltip text="Микронутриенты, клетчатка, витамины и качество углеводов в вашей еде." />
                 </div>
                 <div className="p-5 bg-emerald-50/30 rounded-3xl border border-emerald-50">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.diversity}"</p>
+                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.quality}"</p>
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <div className="flex items-center justify-between gap-3 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                    <div className="w-8 h-8 bg-cyan-50 text-cyan-500 rounded-lg flex items-center justify-center shrink-0">
+                      <Droplets size={18} />
+                    </div>
+                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">3. Гидратация</h3>
+                  </div>
+                  <InfoTooltip text="Водный баланс и его влияние на метаболизм и общее самочувствие." />
+                </div>
+                <div className="p-5 bg-cyan-50/30 rounded-3xl border border-cyan-50">
+                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.hydration}"</p>
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <div className="flex items-center justify-between gap-3 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                    <div className="w-8 h-8 bg-purple-50 text-purple-500 rounded-lg flex items-center justify-center shrink-0">
+                      <Clock size={18} />
+                    </div>
+                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">4. Биоритмы и Тайминг</h3>
+                  </div>
+                  <InfoTooltip text="Распределение калорий в течение дня, оценка интервалов питания." />
+                </div>
+                <div className="p-5 bg-purple-50/30 rounded-3xl border border-purple-50">
+                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.timing}"</p>
                 </div>
               </section>
 
@@ -620,14 +623,14 @@ const LongTermAnalysisModal = ({
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                     <div className="w-8 h-8 bg-amber-50 text-amber-500 rounded-lg flex items-center justify-center shrink-0">
-                      <Filter size={18} />
+                      <Scale size={18} />
                     </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">4. Клетчатка (овощи и злаки)</h3>
+                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">5. Главный вердикт</h3>
                   </div>
-                  <InfoTooltip text="ИИ оценивает содержание растительных волокон. Рекомендуемая норма для взрослого — 25-30 грамм в день." />
+                  <InfoTooltip text="Общий итог анализа: что получилось хорошо, а где были ошибки." />
                 </div>
                 <div className="p-5 bg-amber-50/30 rounded-3xl border border-amber-50">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.fiber}"</p>
+                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.verdict}"</p>
                 </div>
               </section>
 
@@ -635,29 +638,14 @@ const LongTermAnalysisModal = ({
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                     <div className="w-8 h-8 bg-rose-50 text-rose-500 rounded-lg flex items-center justify-center shrink-0">
-                      <Flame size={18} />
+                      <TrendingUp size={18} />
                     </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">5. Сахар и нагрузка</h3>
+                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">6. Шаги на завтра</h3>
                   </div>
-                  <InfoTooltip text="Мы оцениваем &#39;быстрые&#39; углеводы и общее количество сахара. Это влияет на скачки энергии и чувство голода." />
+                  <InfoTooltip text="Конкретные и простые рекомендации по улучшению питания на следующий день." />
                 </div>
                 <div className="p-5 bg-rose-50/30 rounded-3xl border border-rose-50">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.glycemic}"</p>
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <div className="flex items-center justify-between gap-3 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                    <div className="w-8 h-8 bg-orange-50 text-orange-500 rounded-lg flex items-center justify-center shrink-0">
-                      <AlertTriangle size={18} />
-                    </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">6. Чего не хватает организму</h3>
-                  </div>
-                  <InfoTooltip text="На основе описания продуктов ИИ определяет вероятные дефициты витаминов D, B12 и минералов (Железо, Магний)." />
-                </div>
-                <div className="p-5 bg-orange-50/30 rounded-3xl border border-orange-50">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.deficiencies}"</p>
+                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.improvements}"</p>
                 </div>
               </section>
             </div>
@@ -1270,8 +1258,7 @@ const Dashboard: React.FC<{
                   targets={targets}
                   isLocked={isLocked}
                   onOpenSetup={onOpenSetup}
-                  onShowDetails={period.id !== 'day' ? () => handleShowDetails(period) : undefined}
-                  streakInfo={period.id === 'day' ? { count: user.streak, avgScore: user.streakAvgScore || 0 } : undefined}
+                  onShowDetails={() => handleShowDetails(period)}
                 />
               </div>
             );
@@ -1812,7 +1799,7 @@ const ProductDetails: React.FC<{ selectedProduct: Product | null, setActiveTab: 
           </div>
         )}
 
-        {!isSystem && quickAddToDiary && (
+        {quickAddToDiary && (
           <div className="mt-6 pt-6 border-t border-slate-100 space-y-4">
              <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
                <div className="w-6 h-6 rounded-md bg-blue-50 text-blue-500 flex items-center justify-center">⚡</div>
@@ -1820,17 +1807,21 @@ const ProductDetails: React.FC<{ selectedProduct: Product | null, setActiveTab: 
              </h4>
              
              <div className="grid grid-cols-2 gap-3">
+               {!isSystem && (
+                 <div className="space-y-1">
+                   <label className="text-[10px] uppercase font-bold text-slate-400">Прием пищи</label>
+                   <select value={quickMealType} onChange={e => setQuickMealType(e.target.value)} className="w-full bg-slate-50 border-none p-2.5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                     <option value="breakfast">Завтрак</option>
+                     <option value="lunch">Обед</option>
+                     <option value="dinner">Ужин</option>
+                     <option value="snack">Перекус</option>
+                   </select>
+                 </div>
+               )}
                <div className="space-y-1">
-                 <label className="text-[10px] uppercase font-bold text-slate-400">Прием пищи</label>
-                 <select value={quickMealType} onChange={e => setQuickMealType(e.target.value)} className="w-full bg-slate-50 border-none p-2.5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
-                   <option value="breakfast">Завтрак</option>
-                   <option value="lunch">Обед</option>
-                   <option value="dinner">Ужин</option>
-                   <option value="snack">Перекус</option>
-                 </select>
-               </div>
-               <div className="space-y-1">
-                 <label className="text-[10px] uppercase font-bold text-slate-400">Вес (г)</label>
+                 <label className="text-[10px] uppercase font-bold text-slate-400">
+                   {selectedProduct.id === WATER_PRODUCT_ID ? 'Объем (мл)' : selectedProduct.id === STEPS_PRODUCT_ID ? 'Количество шагов' : 'Вес (г)'}
+                 </label>
                  <input type="number" value={quickGrams} onChange={e => setQuickGrams(e.target.value)} className="w-full bg-slate-50 border-none p-2.5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" />
                </div>
                <div className="space-y-1">
@@ -1865,9 +1856,13 @@ const ProductDetails: React.FC<{ selectedProduct: Product | null, setActiveTab: 
              <button 
                onClick={() => {
                  const g = parseFloat(quickGrams);
-                 if (isNaN(g) || g <= 0) return alert('Введите корректный вес');
+                 if (isNaN(g) || g <= 0) return alert(isSystem ? 'Введите корректное значение' : 'Введите корректный вес');
                  
-if (selectedProduct && quickAddToDiary) { quickAddToDiary(quickMealType, quickDate, quickTime, g, selectedProduct); }
+                 let finalMealType = quickMealType;
+                 if (selectedProduct.id === WATER_PRODUCT_ID) finalMealType = 'water';
+                 if (selectedProduct.id === STEPS_PRODUCT_ID) finalMealType = 'steps';
+                 
+                 if (selectedProduct && quickAddToDiary) { quickAddToDiary(finalMealType, quickDate, quickTime, g, selectedProduct); }
                }}
                className="w-full bg-blue-500 text-white p-3 rounded-xl font-black hover:bg-blue-600 transition-all shadow-md active:scale-95 text-sm"
              >
