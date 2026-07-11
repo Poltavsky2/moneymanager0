@@ -360,8 +360,10 @@ async def analyze_food_gemini(api_key: str, text: str = None, photo_bytes: bytes
                             return parse_and_clean_json(text_response)
                         except json.JSONDecodeError as e:
                             logging.error(f"JSONDecodeError: {e}\nRaw response: {text_response}")
-                            raise Exception("Сбой форматирования ответа нейросети. Пожалуйста, отправьте запрос еще раз.")
-                    
+                            last_error = Exception(f"Сбой форматирования ответа нейросети.\nСырой ответ: {text_response[:200]}")
+                            if attempt < max_retries - 1:
+                                continue
+                            raise last_error
                     if resp.status_code in [429, 503]:
                         last_error = Exception(f"Ошибка {resp.status_code}: Сервер перегружен или лимит исчерпан.")
                         if attempt < max_retries - 1:
