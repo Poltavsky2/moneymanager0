@@ -301,7 +301,7 @@ async def call_ai_api(prompt: str, api_key: str, system_instruction: str = None,
                     return resp.json()["choices"][0]["message"]["content"]
             else:
                 if api_key.startswith("AQ"):
-                    url = f"https://api.apiyi.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
                 else:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
                 headers = {"Content-Type": "application/json"}

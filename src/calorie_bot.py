@@ -292,7 +292,7 @@ async def analyze_food_gemini(api_key: str, text: str = None, photo_bytes: bytes
         last_error = None
         for current_key in keys:
             if current_key.startswith("AQ"):
-                url = f"https://api.apiyi.com/v1beta/models/gemini-3.5-flash:generateContent?key={current_key}"
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={current_key}"
             else:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={current_key}"
             
@@ -395,7 +395,7 @@ async def generate_report_gemini(api_key: str, data_text: str, is_custom_key: bo
             last_error_text = None
             for current_key in keys:
                 if current_key.startswith("AQ"):
-                    url = f"https://api.apiyi.com/v1beta/models/gemini-3.5-flash:generateContent?key={current_key}"
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={current_key}"
                 else:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={current_key}"
                 
