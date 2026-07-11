@@ -217,6 +217,7 @@ export const getDailyAdvice = async (diet: DietEntry[], goals?: UserGoals): Prom
     const goalsContext = goals ? `Цели: ${goals.calories}ккал, Б:${goals.protein}, Ж:${goals.fat}, У:${goals.carbs}` : "";
 
     const prompt = `Ты — диетолог. Дай очень короткий совет (1-2 предложения) на русском.\n${goalsContext}\nЕда за сегодня:\n${dietContext}`;
+    const ai = getAI();
     const response = await ai.models.generateContent({ model, contents: [{ role: "user", parts: [{ text: prompt }] }] });
     return (response.text || "Старайтесь пить больше воды.").trim();
   } catch (error: any) {
@@ -255,6 +256,7 @@ export const analyzeMealDescription = async (description: string, knownProducts:
 3. Рассчитай общие КБЖУ только для ЕДЫ (вода и шаги имеют 0 калорий).
 Верни только JSON.`;
 
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -300,6 +302,7 @@ export const analyzeFoodImage = async (base64Image: string, knownProducts: Produ
 4. Суммируй КБЖУ только для еды.
 5. Верни JSON.`;
 
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: base64Data, mimeType: "image/jpeg" } }] }],
@@ -336,6 +339,7 @@ export const calculatePersonalGoals = async (bio: UserBiologicalData): Promise<U
     const model = key.startsWith('AQ') ? "gemini-3.5-flash" : "gemini-1.5-flash";
     const prompt = `Рассчитай КБЖУ, норму воды (мл) и рекомендованное количество шагов. Данные: ${JSON.stringify(bio)}. Верни JSON {calories, protein, fat, carbs, water, steps}.`;
 
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -406,6 +410,7 @@ export const refineGoal = async (bio: UserBiologicalData): Promise<string> => {
 Сформулируй краткую, конкретную и мотивирующую цель на русском языке (1 предложение). 
 Если описание цели пустое, сформулируй её на основе параметров тела (например, поддержание формы или здоровый образ жизни). 
 Верни только текст цели без кавычек.`;
+    const ai = getAI();
     const response = await ai.models.generateContent({ model, contents: [{ role: "user", parts: [{ text: prompt }] }] });
     return (response.text || bio.goalDescription || "Здоровый образ жизни").trim();
   } catch (error) {
@@ -453,6 +458,7 @@ ${goalsContext}
 
 Текст внутри полей может содержать символы переноса строки (\n) для форматирования списков (например, "- Белок: ...\n- Овощи: ..."). Верни JSON объект со строковыми полями: intro, what_was_good, what_to_watch, how_to_use.`;
 
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
