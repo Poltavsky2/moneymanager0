@@ -349,12 +349,10 @@ export const refineGoal = async (bio: UserBiologicalData): Promise<string> => {
 };
 
 export interface LongTermAnalysis {
-  numbers: string;
-  quality: string;
-  hydration: string;
-  timing: string;
-  verdict: string;
-  improvements: string;
+  intro: string;
+  what_was_good: string;
+  what_to_watch: string;
+  how_to_use: string;
 }
 
 export const analyzeLongTermDiet = async (diet: DietEntry[], periodName: string, goals?: UserGoals): Promise<LongTermAnalysis> => {
@@ -378,19 +376,17 @@ ${goalsContext}
 Данные рациона (в сжатом виде): ${JSON.stringify(dietSummary.slice(-100))}
 
 Подготовь отчет на РУССКОМ языке. Пиши ПРОСТО и ПОНЯТНО, без сложных медицинских терминов, как будто объясняешь другу.
-Используй живые примеры из результата.
+Используй живые примеры из результата (например, названия продуктов из рациона).
 
 ВАЖНО: Если данных рациона НЕТ или их критически мало (например, 0 или 1 запись за день), не пытайся выдумывать. Прямо напиши в каждом пункте: "Данных недостаточно" и ОБЯЗАТЕЛЬНО укажи конкретные шаги, что нужно сделать (например: "Пожалуйста, добавьте ваши приемы пищи через главное меню, чтобы я смог рассчитать ваши цифры.").
 
-Пункты анализа:
-1. numbers (Главные цифры): КБЖУ и энергетический баланс: профицит или дефицит, и как это влияет на энергию.
-2. quality (Качество рациона): Микронутриенты, клетчатка, витамины и качество углеводов в вашей еде.
-3. hydration (Гидратация): Водный баланс и его влияние на метаболизм и общее самочувствие.
-4. timing (Биоритмы и Тайминг): Распределение калорий в течение дня, оценка интервалов питания.
-5. verdict (Главный вердикт): Общий итог анализа: что получилось хорошо, а где были ошибки.
-6. improvements (Шаги на завтра): Конкретные и простые рекомендации по улучшению питания на следующий день.
+Структура отчета (JSON):
+1. intro: Вводный текст про день/период. Оцени калорийность, баланс и общую активность. Дай характеристику дню (например, "сладко-хлебный день" или "отличный белковый день").
+2. what_was_good: Раздел "✅ Что было хорошо". Опиши плюсы: белковая основа, овощи, вода, шаги, полезные привычки.
+3. what_to_watch: Раздел "⚠️ На что аккуратно смотреть". Опиши минусы или риски: сладости, перебор жиров/углеводов, недостаток шагов.
+4. how_to_use: Раздел "📌 Как использовать этот день". Дай краткие выводы и правила для подобных дней в будущем (например, "оставь 1 сладость вместо 3", "увеличь шаги").
 
-Верни JSON объект со строковыми полями: numbers, quality, hydration, timing, verdict, improvements.`;
+Текст внутри полей может содержать символы переноса строки (\n) для форматирования списков (например, "- Белок: ...\n- Овощи: ..."). Верни JSON объект со строковыми полями: intro, what_was_good, what_to_watch, how_to_use.`;
 
     const response = await ai.models.generateContent({
       model,
@@ -399,14 +395,12 @@ ${goalsContext}
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
-          required: ["numbers", "quality", "hydration", "timing", "verdict", "improvements"],
+          required: ["intro", "what_was_good", "what_to_watch", "how_to_use"],
           properties: {
-            numbers: { type: Type.STRING },
-            quality: { type: Type.STRING },
-            hydration: { type: Type.STRING },
-            timing: { type: Type.STRING },
-            verdict: { type: Type.STRING },
-            improvements: { type: Type.STRING },
+            intro: { type: Type.STRING },
+            what_was_good: { type: Type.STRING },
+            what_to_watch: { type: Type.STRING },
+            how_to_use: { type: Type.STRING }
           }
         }
       }
@@ -416,12 +410,10 @@ ${goalsContext}
   } catch (error: any) {
     console.error("Long Term Analysis Error:", error);
     return {
-      numbers: `Ошибка: ${error?.message || String(error)}`,
-      quality: "Не удалось проанализировать качество рациона.",
-      hydration: "Информация о водном балансе недоступна.",
-      timing: "Не удалось проанализировать время приемов пищи.",
-      verdict: "Анализ не удался из-за технической ошибки.",
-      improvements: "Попробуйте запросить отчет позже."
+      intro: `Ошибка: ${error?.message || String(error)}`,
+      what_was_good: "Анализ не удался из-за технической ошибки.",
+      what_to_watch: "Попробуйте запросить отчет позже.",
+      how_to_use: "Попробуйте запросить отчет позже."
     };
   }
 };

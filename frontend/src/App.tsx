@@ -561,17 +561,8 @@ const LongTermAnalysisModal = ({
           ) : analysis ? (
             <div className="space-y-6">
               <section className="space-y-3">
-                <div className="flex items-center justify-between gap-3 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                    <div className="w-8 h-8 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center shrink-0">
-                      <Target size={18} />
-                    </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">1. Главные цифры дня</h3>
-                  </div>
-                  <InfoTooltip text="КБЖУ и энергетический баланс: профицит или дефицит, и как это влияет на энергию." />
-                </div>
                 <div className="p-5 bg-blue-50/30 rounded-3xl border border-blue-50">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.numbers}"</p>
+                  <p className="text-sm leading-relaxed text-slate-600 italic whitespace-pre-wrap">{analysis.intro}</p>
                 </div>
               </section>
 
@@ -579,44 +570,13 @@ const LongTermAnalysisModal = ({
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                     <div className="w-8 h-8 bg-emerald-50 text-emerald-500 rounded-lg flex items-center justify-center shrink-0">
-                      <Leaf size={18} />
+                      <Target size={18} />
                     </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">2. Качество рациона</h3>
+                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">✅ Что было хорошо</h3>
                   </div>
-                  <InfoTooltip text="Микронутриенты, клетчатка, витамины и качество углеводов в вашей еде." />
                 </div>
                 <div className="p-5 bg-emerald-50/30 rounded-3xl border border-emerald-50">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.quality}"</p>
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <div className="flex items-center justify-between gap-3 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                    <div className="w-8 h-8 bg-cyan-50 text-cyan-500 rounded-lg flex items-center justify-center shrink-0">
-                      <Droplets size={18} />
-                    </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">3. Гидратация</h3>
-                  </div>
-                  <InfoTooltip text="Водный баланс и его влияние на метаболизм и общее самочувствие." />
-                </div>
-                <div className="p-5 bg-cyan-50/30 rounded-3xl border border-cyan-50">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.hydration}"</p>
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <div className="flex items-center justify-between gap-3 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                    <div className="w-8 h-8 bg-purple-50 text-purple-500 rounded-lg flex items-center justify-center shrink-0">
-                      <Clock size={18} />
-                    </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">4. Биоритмы и Тайминг</h3>
-                  </div>
-                  <InfoTooltip text="Распределение калорий в течение дня, оценка интервалов питания." />
-                </div>
-                <div className="p-5 bg-purple-50/30 rounded-3xl border border-purple-50">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.timing}"</p>
+                  <p className="text-sm leading-relaxed text-slate-600 italic whitespace-pre-wrap">{analysis.what_was_good}</p>
                 </div>
               </section>
 
@@ -624,29 +584,27 @@ const LongTermAnalysisModal = ({
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                     <div className="w-8 h-8 bg-amber-50 text-amber-500 rounded-lg flex items-center justify-center shrink-0">
-                      <Scale size={18} />
+                      <AlertCircle size={18} />
                     </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">5. Главный вердикт</h3>
+                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">⚠️ На что аккуратно смотреть</h3>
                   </div>
-                  <InfoTooltip text="Общий итог анализа: что получилось хорошо, а где были ошибки." />
                 </div>
                 <div className="p-5 bg-amber-50/30 rounded-3xl border border-amber-50">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.verdict}"</p>
+                  <p className="text-sm leading-relaxed text-slate-600 italic whitespace-pre-wrap">{analysis.what_to_watch}</p>
                 </div>
               </section>
 
               <section className="space-y-3">
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                    <div className="w-8 h-8 bg-rose-50 text-rose-500 rounded-lg flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 bg-purple-50 text-purple-500 rounded-lg flex items-center justify-center shrink-0">
                       <TrendingUp size={18} />
                     </div>
-                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">6. Шаги на завтра</h3>
+                    <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-tight text-slate-800 truncate">📌 Как использовать этот день</h3>
                   </div>
-                  <InfoTooltip text="Конкретные и простые рекомендации по улучшению питания на следующий день." />
                 </div>
-                <div className="p-5 bg-rose-50/30 rounded-3xl border border-rose-50">
-                  <p className="text-sm leading-relaxed text-slate-600 italic">"{analysis.improvements}"</p>
+                <div className="p-5 bg-purple-50/30 rounded-3xl border border-purple-50">
+                  <p className="text-sm leading-relaxed text-slate-600 italic whitespace-pre-wrap">{analysis.how_to_use}</p>
                 </div>
               </section>
             </div>
