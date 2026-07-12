@@ -1416,7 +1416,7 @@ async def process_clarification_input(update: Update, context: ContextTypes.DEFA
         keyboard = [
             [InlineKeyboardButton("✅ Добавить в дневник", callback_data="action_add_diary"),
              InlineKeyboardButton("🔄 Сбросить", callback_data="action_reset")],
-            [InlineKeyboardButton("✏️ Уточнить / Исправить", callback_data="action_clarify")],
+            [InlineKeyboardButton("✏️ Уточнить", callback_data="action_clarify")],
             [InlineKeyboardButton("🏠 Главное меню", callback_data="menu_main")]
         ]
         
@@ -1491,7 +1491,7 @@ async def process_food_input(update: Update, context: ContextTypes.DEFAULT_TYPE,
         keyboard = [
             [InlineKeyboardButton("✅ Добавить в дневник", callback_data="action_add_diary"),
              InlineKeyboardButton("🔄 Сбросить", callback_data="action_reset")],
-            [InlineKeyboardButton("✏️ Уточнить / Исправить", callback_data="action_clarify")],
+            [InlineKeyboardButton("✏️ Уточнить", callback_data="action_clarify")],
             [InlineKeyboardButton("🏠 Главное меню", callback_data="menu_main")]
         ]
         
