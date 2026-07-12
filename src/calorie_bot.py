@@ -605,9 +605,10 @@ async def clarify_food_gemini(api_key: str, last_analysis: dict, text: str = Non
             if current_key.startswith("gsk_"):
                 url = "https://api.groq.com/openai/v1/chat/completions"
                 headers = {"Authorization": f"Bearer {current_key}", "Content-Type": "application/json"}
+                groq_content = f"{CLARIFY_PROMPT}\n\nПРЕДЫДУЩИЙ АНАЛИЗ: {json.dumps(last_analysis, ensure_ascii=False)}\n\nУТОЧНЕНИЕ: {text or 'Голосовое сообщение'}"
                 payload = {
                     "model": "llama-3.1-70b-versatile" if is_custom_key else "llama-3.1-8b-instant",
-                    "messages": [{"role": "user", "content": text or "Исправь по голосовому сообщению."}],
+                    "messages": [{"role": "user", "content": groq_content}],
                     "response_format": {"type": "json_object"}
                 }
                 # Groq doesn't support audio here easily in the same prompt, but fallback is ok.
