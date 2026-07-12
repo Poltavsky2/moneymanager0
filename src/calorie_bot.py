@@ -562,6 +562,104 @@ async def analyze_food_openai(api_key: str, text: str = None, photo_bytes: bytes
         response_text = result["choices"][0]["message"]["content"]
         return parse_and_clean_json(response_text)
 
+# ----------------- CLARIFICATION AI INTEGRATION -----------------
+
+CLARIFY_PROMPT = """Ты — эксперт-нутрициолог. Пользователь хочет уточнить или исправить твой предыдущий анализ блюда/продукта.
+
+Твоя задача — вернуть JSON-объект, содержащий два ключа:
+1. "remark" (строка) — короткая ремарка (1-2 предложения) на РУССКОМ языке. Признай исправление, объясни кратко, что изменилось (например, "Понял, заменяю сыр на пармезан и пересчитываю вес").
+2. "analysis" (объект) — ПОЛНОСТЬЮ обновленный и пересчитанный анализ (в том же самом формате, как ты делал изначально). Обязательно сохрани структуру (type, name, description, category, nutrition, health_score, verdict, warning_type, ingredients, estimated_weight). Не сокращай этот блок!
+
+ПРИМЕЧАНИЕ: ВЕСЬ текст (включая remark, verdict, description, ingredients) должен быть строго на русском языке, без транслита и английских слов.
+"""
+
+async def clarify_food_gemini(api_key: str, last_analysis: dict, text: str = None, voice_bytes: bytes = None, is_custom_key: bool = False) -> dict:
+    parts = [{"text": CLARIFY_PROMPT}]
+    parts.append({"text": f"ПРЕДЫДУЩИЙ АНАЛИЗ (JSON): {json.dumps(last_analysis, ensure_ascii=False)}"})
+    if text:
+        parts.append({"text": f"УТОЧНЕНИЕ ПОЛЬЗОВАТЕЛЯ: {text}"})
+    if voice_bytes:
+        parts.append({
+            "inlineData": {
+                "mimeType": "audio/ogg",
+                "data": base64.b64encode(voice_bytes).decode('utf-8')
+            }
+        })
+        
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {
+            "responseMimeType": "application/json"
+        }
+    }
+    
+    proxy_url = os.environ.get("GEMINI_PROXY")
+    keys = [k.strip() for k in api_key.split(",") if k.strip()]
+    if not keys: keys = [""]
+        
+    for current_key in keys:
+        use_proxy = proxy_url if not current_key.startswith("gsk_") else None
+        async with httpx.AsyncClient(proxy=use_proxy) as client:
+            if current_key.startswith("gsk_"):
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                headers = {"Authorization": f"Bearer {current_key}", "Content-Type": "application/json"}
+                payload = {
+                    "model": "llama-3.1-70b-versatile" if is_custom_key else "llama-3.1-8b-instant",
+                    "messages": [{"role": "user", "content": text or "Исправь по голосовому сообщению."}],
+                    "response_format": {"type": "json_object"}
+                }
+                # Groq doesn't support audio here easily in the same prompt, but fallback is ok.
+            else:
+                if is_custom_key:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={current_key}"
+                else:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={current_key}"
+                headers = {"Content-Type": "application/json"}
+            
+            try:
+                res = await client.post(url, headers=headers, json=payload, timeout=90.0)
+                if res.status_code == 200:
+                    data = res.json()
+                    if current_key.startswith("gsk_"):
+                        return data.get("choices", [{}])[0].get("message", {}).get("content", "{}")
+                    else:
+                        return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
+            except:
+                continue
+    return "{}"
+
+async def clarify_food_openai(api_key: str, last_analysis: dict, text: str = None, voice_bytes: bytes = None) -> dict:
+    if voice_bytes:
+        transcribe_url = "https://api.openai.com/v1/audio/transcriptions"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        files = {"file": ("voice.ogg", voice_bytes, "audio/ogg"), "model": (None, "whisper-1"), "language": (None, "ru")}
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(transcribe_url, headers=headers, files=files, timeout=30.0)
+            if resp.status_code == 200:
+                text = (text or "") + " " + resp.json().get("text", "")
+                
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    content_list = [
+        {"type": "text", "text": CLARIFY_PROMPT},
+        {"type": "text", "text": f"ПРЕДЫДУЩИЙ АНАЛИЗ (JSON): {json.dumps(last_analysis, ensure_ascii=False)}"}
+    ]
+    if text:
+        content_list.append({"type": "text", "text": f"УТОЧНЕНИЕ ПОЛЬЗОВАТЕЛЯ: {text}"})
+        
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": content_list}],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2
+    }
+    
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(url, headers=headers, json=payload, timeout=45.0)
+        if resp.status_code == 200:
+            return parse_and_clean_json(resp.json()["choices"][0]["message"]["content"])
+    return {}
+
 # ----------------- UI / FORMATTING HELPERS -----------------
 
 def format_food_message_html(data: dict) -> str:
@@ -812,6 +910,22 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🏠 Главное меню", callback_data="menu_main")]
         ]
         await query.edit_message_text("🔄 Запись сброшена. Вы можете отправить новое описание еды.", reply_markup=InlineKeyboardMarkup(keyboard))
+        
+    elif data == "action_clarify":
+        last_analysis = context.user_data.get('last_analysis')
+        if not last_analysis:
+            keyboard = [[InlineKeyboardButton("🔙 Главное меню", callback_data="menu_main")]]
+            await query.edit_message_text("⚠️ Ошибка: данные анализа не найдены. Пожалуйста, отправьте запись заново.", reply_markup=InlineKeyboardMarkup(keyboard))
+            return
+            
+        context.user_data['state'] = "AWAITING_CLARIFICATION"
+        keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="menu_main")]]
+        await query.edit_message_text(
+            "✏️ <b>Уточнение анализа ИИ</b>\n\n"
+            "Пожалуйста, отправьте текстовое сообщение или голосовое с вашим уточнением (например, поправьте вес, бренд продукта или укажите на ошибку):",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         
     elif data == "action_add_diary":
         last_analysis = context.user_data.get('last_analysis')
@@ -1199,6 +1313,10 @@ async def user_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await save_and_confirm_entry(update.message, context, from_text_reply=True)
         return
         
+    elif state == "AWAITING_CLARIFICATION":
+        await process_clarification_input(update, context, text=text)
+        return
+        
     # Normal food text input
     await process_food_input(update, context, text=text)
 
@@ -1228,7 +1346,87 @@ async def user_media_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_html("⚠️ Неподдерживаемый тип сообщения. Пожалуйста, отправьте текст, фото или голосовое.", reply_markup=InlineKeyboardMarkup(keyboard))
         return
         
+    state = context.user_data.get('state')
+    if state == "AWAITING_CLARIFICATION":
+        await process_clarification_input(update, context, voice_bytes=voice_bytes)
+        return
+        
     await process_food_input(update, context, photo_bytes=photo_bytes, voice_bytes=voice_bytes)
+
+async def process_clarification_input(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str = None, voice_bytes: bytes = None):
+    last_analysis = context.user_data.get('last_analysis')
+    if not last_analysis:
+        keyboard = [[InlineKeyboardButton("🔙 Главное меню", callback_data="menu_main")]]
+        await update.message.reply_html("⚠️ Ошибка: данные анализа устарели или потеряны. Пожалуйста, отправьте запись заново.", reply_markup=InlineKeyboardMarkup(keyboard))
+        context.user_data['state'] = None
+        return
+        
+    user_id = update.effective_user.id
+    settings = await get_user_settings(user_id)
+    
+    api_key = None
+    provider = "gemini"
+    
+    if settings and settings.get("api_key"):
+        api_key = settings["api_key"]
+        provider = settings.get("api_provider", "gemini")
+    else:
+        system_gemini = os.environ.get("GEMINI_API_KEY")
+        system_openai = os.environ.get("OPENAI_API_KEY")
+        if system_gemini and system_gemini != "YOUR_GEMINI_API_KEY_HERE":
+            api_key = system_gemini
+            provider = "gemini"
+        elif system_openai and system_openai != "YOUR_OPENAI_API_KEY_HERE":
+            api_key = system_openai
+            provider = "openai"
+            
+    if not api_key:
+        await update.message.reply_html("⚠️ <b>Для анализа питания необходим API-ключ!</b>")
+        return
+        
+    status_msg = await update.message.reply_html("⏳ <i>ИИ обрабатывает уточнение...</i>")
+    
+    try:
+        if provider == "openai":
+            raw_data = await clarify_food_openai(api_key, last_analysis, text=text, voice_bytes=voice_bytes)
+        else:
+            is_custom = bool(settings.get("api_key")) if settings else False
+            actual_key = api_key or os.environ.get("GEMINI_API_KEY")
+            raw_str = await clarify_food_gemini(actual_key, last_analysis, text=text, voice_bytes=voice_bytes, is_custom_key=is_custom)
+            if isinstance(raw_str, str):
+                raw_data = parse_and_clean_json(raw_str)
+            else:
+                raw_data = raw_str
+                
+        remark = raw_data.get("remark", "Понял, применяю изменения.")
+        analysis = raw_data.get("analysis", {})
+        
+        validated_data = validate_food_data(analysis)
+        context.user_data['last_analysis'] = validated_data
+        context.user_data['state'] = None
+        
+        input_type = validated_data.get("type", "food")
+        if input_type == "water": formatted_html = format_water_message_html(validated_data)
+        elif input_type == "steps": formatted_html = format_steps_message_html(validated_data)
+        else: formatted_html = format_food_message_html(validated_data)
+        
+        keyboard = [
+            [InlineKeyboardButton("✅ Добавить в дневник", callback_data="action_add_diary"),
+             InlineKeyboardButton("🔄 Сбросить", callback_data="action_reset")],
+            [InlineKeyboardButton("✏️ Уточнить / Исправить", callback_data="action_clarify")],
+            [InlineKeyboardButton("🏠 Главное меню", callback_data="menu_main")]
+        ]
+        
+        await status_msg.delete()
+        if remark:
+            await update.message.reply_html(f"💬 <b>Комментарий ИИ:</b>\n<i>{remark}</i>")
+        await update.message.reply_html(formatted_html, reply_markup=InlineKeyboardMarkup(keyboard))
+        
+    except Exception as e:
+        logger.error(f"Error processing clarification: {e}")
+        keyboard = [[InlineKeyboardButton("🔙 Главное меню", callback_data="menu_main")]]
+        await status_msg.edit_text(f"❌ <b>Произошла ошибка при уточнении</b>\n\n<code>{str(e)}</code>", parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+
 
 async def process_food_input(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str = None, 
                              photo_bytes: bytes = None, voice_bytes: bytes = None):
@@ -1290,6 +1488,7 @@ async def process_food_input(update: Update, context: ContextTypes.DEFAULT_TYPE,
         keyboard = [
             [InlineKeyboardButton("✅ Добавить в дневник", callback_data="action_add_diary"),
              InlineKeyboardButton("🔄 Сбросить", callback_data="action_reset")],
+            [InlineKeyboardButton("✏️ Уточнить / Исправить", callback_data="action_clarify")],
             [InlineKeyboardButton("🏠 Главное меню", callback_data="menu_main")]
         ]
         
