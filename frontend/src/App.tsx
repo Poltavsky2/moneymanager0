@@ -1274,10 +1274,10 @@ const Dashboard: React.FC<{
       </div>
 
       {/* Dynamic Health Goals Section */}
-      {(user.settings?.trackWater || user.settings?.trackSteps) && (
-        <div className={`grid ${user.settings?.trackWater && user.settings?.trackSteps ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+      {(user.settings?.trackWater !== false || user.settings?.trackSteps !== false) && (
+        <div className={`grid ${user.settings?.trackWater !== false && user.settings?.trackSteps !== false ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
           {/* Water Goal Card */}
-          {user.settings?.trackWater && (
+          {user.settings?.trackWater !== false && (
             <div 
               onClick={() => !isLocked && setStatsModal('water')}
               className="bg-white rounded-[32px] p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-44 relative overflow-hidden transition-all active:scale-[0.98] cursor-pointer hover:border-blue-100 hover:shadow-blue-50"
@@ -1301,7 +1301,7 @@ const Dashboard: React.FC<{
           )}
 
           {/* Steps Goal Card */}
-          {user.settings?.trackSteps && (
+          {user.settings?.trackSteps !== false && (
             <div 
               onClick={() => !isLocked && setStatsModal('steps')}
               className="bg-white rounded-[32px] p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-44 relative overflow-hidden transition-all active:scale-[0.98] cursor-pointer hover:border-orange-100 hover:shadow-orange-50"
