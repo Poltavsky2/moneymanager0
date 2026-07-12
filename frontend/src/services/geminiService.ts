@@ -463,12 +463,15 @@ export const analyzeLongTermDiet = async (diet: DietEntry[], periodName: string,
       noun = "весь период"; nounPre = "все время"; nounGen = "всего времени";
     }
 
-    const avgCals = Math.round(totalCals / days);
-    const avgProtein = Math.round(totalProtein / days);
-    const avgFat = Math.round(totalFat / days);
-    const avgCarbs = Math.round(totalCarbs / days);
-    const avgWater = Math.round(totalWater / days);
-    const avgSteps = Math.round(totalSteps / days);
+    const uniqueDays = new Set(diet.map(d => new Date(d.timestamp).toDateString()));
+    const activeDays = Math.max(1, uniqueDays.size);
+
+    const avgCals = Math.round(totalCals / activeDays);
+    const avgProtein = Math.round(totalProtein / activeDays);
+    const avgFat = Math.round(totalFat / activeDays);
+    const avgCarbs = Math.round(totalCarbs / activeDays);
+    const avgWater = Math.round(totalWater / activeDays);
+    const avgSteps = Math.round(totalSteps / activeDays);
 
     const goals = user?.goals;
     const waterTarget = user?.bio?.waterTarget || 2000;
@@ -477,9 +480,10 @@ export const analyzeLongTermDiet = async (diet: DietEntry[], periodName: string,
     const goalsContext = goals ? `ЦЕЛИ ПОЛЬЗОВАТЕЛЯ (В ДЕНЬ): ${goals.calories} ккал, Б:${goals.protein}г, Ж:${goals.fat}г, У:${goals.carbs}г. Вода: ${waterTarget} мл, Шаги: ${stepsTarget} шт.` : "";
 
     const aggregates = `ФАКТИЧЕСКАЯ СТАТИСТИКА ПОЛЬЗОВАТЕЛЯ:
-- Всего записей за ${nounPre}: ${diet.length}
-- В СРЕДНЕМ В ДЕНЬ за ${nounPre}: ${avgCals} ккал, Б:${avgProtein}г, Ж:${avgFat}г, У:${avgCarbs}г. Вода: ${avgWater} мл, Шаги: ${avgSteps} шт.
+- Дней с записями в этом периоде: ${activeDays}
+- В СРЕДНЕМ В АКТИВНЫЙ ДЕНЬ: ${avgCals} ккал, Б:${avgProtein}г, Ж:${avgFat}г, У:${avgCarbs}г. Вода: ${avgWater} мл, Шаги: ${avgSteps} шт.
 - ИТОГО за ${nounPre} (сумма): ${totalCals} ккал, Б:${totalProtein}г, Ж:${totalFat}г, У:${totalCarbs}г. Вода: ${totalWater} мл, Шаги: ${totalSteps} шт.`;
+
 
     const prompt = `Ты — эксперт-нутрициолог. Проанализируй данные пользователя за ${nounPre} (${periodName}).
 ${goalsContext}

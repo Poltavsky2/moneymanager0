@@ -1063,9 +1063,18 @@ const Dashboard: React.FC<{
 
     setAnalysisModal(prev => ({ ...prev, isOpen: true, periodTitle: period.title, analysis: null, isLoading: true }));
     try {
-      const entries = period.days === 0 
-        ? diet 
-        : diet.filter(d => d.timestamp >= Date.now() - (period.days * 24 * 60 * 60 * 1000));
+      let entries: DietEntry[] = [];
+      if (period.days === 1) {
+        const today = new Date().toDateString();
+        entries = diet.filter(d => new Date(d.timestamp).toDateString() === today);
+      } else if (period.days === 0) {
+        entries = diet;
+      } else {
+        const now = new Date();
+        now.setHours(23, 59, 59, 999);
+        const startTime = now.getTime() - (period.days * 24 * 60 * 60 * 1000);
+        entries = diet.filter(d => d.timestamp >= startTime);
+      }
       const analysis = await analyzeLongTermDiet(entries, period.title, user);
       
       setAnalysisModal(prev => ({ 
