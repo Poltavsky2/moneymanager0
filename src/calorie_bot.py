@@ -350,7 +350,7 @@ async def analyze_food_gemini(api_key: str, text: str = None, photo_bytes: bytes
             max_retries = 4
             for attempt in range(max_retries):
                 try:
-                    resp = await client.post(url, headers=headers, json=payload, timeout=45.0)
+                    resp = await client.post(url, headers=headers, json=payload, timeout=60.0)
                     if resp.status_code == 200:
                         result = resp.json()
                         if current_key.startswith("gsk_"):
@@ -375,7 +375,10 @@ async def analyze_food_gemini(api_key: str, text: str = None, photo_bytes: bytes
                     raise Exception(f"API Error (status {resp.status_code}): {resp.text}")
                 except httpx.TimeoutException:
                     last_error = Exception("Время ожидания ИИ истекло (таймаут).")
-                    break # Timeout: don't retry same key, try next key
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(2)
+                        continue
+                    break # Timeout: try next key
                 except Exception as e:
                     last_error = e
                     break
