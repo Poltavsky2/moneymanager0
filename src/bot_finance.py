@@ -313,15 +313,7 @@ async def call_ai_api(prompt: str, api_key: str, system_instruction: str = None,
                 
                 if file_bytes and mime_type:
                     if mime_type.startswith("image/"):
-                        model = "llama-3.2-90b-vision-preview"
-                        base64_img = base64.b64encode(file_bytes).decode("utf-8")
-                        messages.append({
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": prompt},
-                                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64_img}"}}
-                            ]
-                        })
+                        messages.append({"role": "user", "content": f"{prompt}\\n[Изображение пропущено: Groq отключили поддержку визуальных моделей]"})
                     elif mime_type.startswith("audio/"):
                         whisper_url = "https://api.groq.com/openai/v1/audio/transcriptions"
                         whisper_headers = {"Authorization": f"Bearer {api_key}"}
